@@ -144,53 +144,57 @@ def node_chat():
             print(f"Temperature: {temperature}")
             print(f"Max tokens: {max_tokens}")
             
-            # Send the request
-            response = requests.post(ollama_url, json=ollama_data, stream=False)
+            # Ollama's API has changed to use streaming responses
+            # We need to set stream=False to get a complete response at once
+            response = requests.post(ollama_url, json=ollama_data)
             
-            # Ollama returns a streaming response with multiple JSON objects
-            # We need to get the last complete JSON object which contains the full response
-            response_text = response.text
             print(f"Response status code: {response.status_code}")
             
-            # Handle streaming response - get the last complete JSON object
             if response.status_code == 200:
                 try:
-                    # Split by newlines and parse each line as JSON
-                    json_lines = response_text.strip().split('\n')
-                    print(f"Found {len(json_lines)} JSON objects in response")
+                    # Ollama returns a JSON object per line in streaming mode
+                    # We need to parse each line and extract the last valid message
+                    lines = response.text.strip().split('\n')
+                    print(f"Found {len(lines)} JSON objects in response")
                     
                     # Get the last complete JSON object
-                    last_json = json.loads(json_lines[-1])
+                    last_response = None
+                    full_content = ""
                     
-                    # Check if it has the expected fields
-                    if 'message' in last_json and 'content' in last_json['message']:
+                    for line in lines:
+                        try:
+                            json_obj = json.loads(line)
+                            last_response = json_obj
+                            # For compatibility with the frontend, reconstruct a complete response
+                            if json_obj.get('message', {}).get('content'):
+                                full_content += json_obj['message']['content']
+                        except json.JSONDecodeError:
+                            continue
+                    
+                    # If we found valid response data
+                    if last_response:
+                        # Construct a final response with the full accumulated content
+                        final_response = {
+                            "model": model,
+                            "message": {
+                                "role": "assistant",
+                                "content": full_content
+                            }
+                        }
                         print("Successfully parsed Ollama response")
-                        return jsonify(last_json)
+                        return jsonify(final_response)
                     else:
-                        # If the last object doesn't have the message, try to find one that does
-                        for line in reversed(json_lines):
-                            try:
-                                json_obj = json.loads(line)
-                                if 'message' in json_obj and 'content' in json_obj['message']:
-                                    print("Found message in earlier JSON object")
-                                    return jsonify(json_obj)
-                            except:
-                                continue
-                        
-                        # If we still don't have a valid response, return an error
-                        error_msg = "No valid message found in Ollama response"
-                        print(error_msg)
-                        return jsonify({"error": error_msg}), 500
+                        return jsonify({"error": "No valid response data found"}), 500
                         
                 except Exception as parse_err:
                     error_msg = f"Error parsing Ollama response: {str(parse_err)}"
                     print(error_msg)
-                    print(f"Response content: {response_text[:200]}...")  # Print first 200 chars
+                    print(f"Response content preview: {response.text[:200]}...")
                     return jsonify({"error": error_msg}), 500
             else:
                 error_msg = f"Ollama API returned status code {response.status_code}"
                 print(error_msg)
-                print(f"Response content: {response_text[:200]}...")
+                print(f"Response content preview: {response.text[:200]}...")
                 return jsonify({"error": error_msg}), response.status_code
                 
         except Exception as e:
@@ -240,7 +244,7 @@ def node_chat():
             except json.JSONDecodeError as json_err:
                 error_msg = f"Invalid JSON response from Groq: {str(json_err)}"
                 print(error_msg)
-                print(f"Response content: {response.text[:200]}...")  # Print first 200 chars
+                print(f"Response content preview: {response.text[:200]}...")
                 return jsonify({"error": error_msg}), 500
                 
         except Exception as e:

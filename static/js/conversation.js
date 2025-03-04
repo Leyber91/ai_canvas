@@ -102,8 +102,14 @@ class ConversationManager {
         messageDiv.classList.add('message');
         messageDiv.classList.add(role === 'user' ? 'user-message' : 'assistant-message');
         
-        // Format content (handle markdown, code, etc. if needed)
-        messageDiv.textContent = content;
+        // Support basic markdown formatting
+        let formattedContent = content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')              // Italic
+            .replace(/`([^`]+)`/g, '<code>$1</code>')          // Inline code
+            .replace(/\n/g, '<br>');                          // Line breaks
+            
+        messageDiv.innerHTML = formattedContent;
         
         this.chatMessages.appendChild(messageDiv);
         this.scrollToBottom();
@@ -229,6 +235,8 @@ class ConversationManager {
             if (nodeData.backend === 'ollama') {
                 if (data.message && data.message.content) {
                     responseContent = data.message.content;
+                } else if (data.error) {
+                    throw new Error(data.error);
                 } else {
                     console.error('Unexpected Ollama response format:', data);
                     responseContent = 'No response or unexpected format from Ollama';
@@ -236,6 +244,8 @@ class ConversationManager {
             } else if (nodeData.backend === 'groq') {
                 if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
                     responseContent = data.choices[0].message.content;
+                } else if (data.error) {
+                    throw new Error(data.error.message || data.error);
                 } else {
                     console.error('Unexpected Groq response format:', data);
                     responseContent = 'No response or unexpected format from Groq';
