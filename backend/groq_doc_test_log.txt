@@ -1,0 +1,35 @@
+Groq API Documentation Test Log
+============================
+
+Sending request to Groq API following documentation example:
+API Key (first 5 chars): gsk_I...
+URL: https://api.groq.com/openai/v1/chat/completions
+Headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer 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'}
+Request data: {
+  "model": "llama-3.3-70b-versatile",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Explain the importance of fast language models"
+    }
+  ]
+}
+
+--- Sending request ---
+
+Response status code: 401
+Response headers: {'Date': 'Tue, 04 Mar 2025 22:28:52 GMT', 'Content-Type': 'application/json', 'Content-Length': '96', 'Connection': 'keep-alive', 'Cache-Control': 'private, max-age=0, no-store, no-cache, must-revalidate', 'vary': 'Origin', 'x-groq-region': 'me-central-1', 'x-request-id': 'req_01jnhmdcxee619k0r0aaz73hky', 'CF-Cache-Status': 'DYNAMIC', 'Set-Cookie': '__cf_bm=v7rvbR6jf7uAAL5l2J9mr5lUeysyrBo1rv7PP0KYxEs-1741127332-1.0.1.1-sDXsjXiUiMfqJexo47m2rWHaDDTl_9Z0b5trcZ6nJpPNe1LLtKfF9tZb3X494vCwA6vuswawhKNKXGBe2zObSnKiKrvsfwbf2.JbAb2xZIo; path=/; expires=Tue, 04-Mar-25 22:58:52 GMT; domain=.groq.com; HttpOnly; Secure; SameSite=None', 'Server': 'cloudflare', 'CF-RAY': '91b4cf256b71d114-CDG', 'alt-svc': 'h3=":443"; ma=86400'}
+
+Response JSON:
+{
+  "error": {
+    "message": "Invalid API Key",
+    "type": "invalid_request_error",
+    "code": "invalid_api_key"
+  }
+}
+
+Error in response:
+{'message': 'Invalid API Key', 'type': 'invalid_request_error', 'code': 'invalid_api_key'}
+
+Test completed. Check groq_doc_test_log.txt for full results.

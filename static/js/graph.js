@@ -275,9 +275,7 @@ class GraphManager {
 
     importGraph(graphData) {
         // Clear existing graph
-        this.cy.elements().remove();
-        this.nodes = [];
-        this.edges = [];
+        this.clearGraph();
         
         // Add nodes
         graphData.nodes.forEach(nodeData => {
@@ -291,6 +289,37 @@ class GraphManager {
         
         // Run layout
         this.runLayout();
+    }
+    
+    clearGraph() {
+        this.cy.elements().remove();
+        this.nodes = [];
+        this.edges = [];
+        this.selectedNode = null;
+    }
+    
+    getNodePositions() {
+        const positions = {};
+        this.cy.nodes().forEach(node => {
+            const position = node.position();
+            positions[node.id()] = {
+                x: position.x,
+                y: position.y
+            };
+        });
+        return positions;
+    }
+    
+    applyNodePositions(positions) {
+        Object.keys(positions).forEach(nodeId => {
+            const node = this.cy.$(`#${nodeId}`);
+            if (node.length > 0) {
+                node.position(positions[nodeId]);
+            }
+        });
+        
+        // Fit the graph to the viewport
+        this.cy.fit();
     }
 }
 

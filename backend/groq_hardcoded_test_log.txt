@@ -1,0 +1,80 @@
+Groq API Hardcoded Key Test Log
+============================
+
+Sending request to Groq API with hardcoded API key:
+API Key (first 5 chars): gsk_3...
+URL: https://api.groq.com/openai/v1/chat/completions
+Headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer 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'}
+Request data: {
+  "model": "llama3-8b-8192",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Explain the importance of fast language models"
+    }
+  ]
+}
+
+--- Sending request ---
+
+Response status code: 200
+Response headers: {'Date': 'Tue, 04 Mar 2025 22:31:25 GMT', 'Content-Type': 'application/json', 'Transfer-Encoding': 'chunked', 'Connection': 'keep-alive', 'Cache-Control': 'private, max-age=0, no-store, no-cache, must-revalidate', 'vary': 'Origin', 'x-groq-region': 'us-west-1', 'x-ratelimit-limit-requests': '14400', 'x-ratelimit-limit-tokens': '6000', 'x-ratelimit-remaining-requests': '14399', 'x-ratelimit-remaining-tokens': '5984', 'x-ratelimit-reset-requests': '6s', 'x-ratelimit-reset-tokens': '160ms', 'x-request-id': 'req_01jnhmj1d3fkba14bfdejg8apb', 'via': '1.1 google', 'alt-svc': 'h3=":443"; ma=86400', 'cf-cache-status': 'DYNAMIC', 'Set-Cookie': '__cf_bm=WGoPdL3mmXnA9K6MNBZ3un4fdVnsORUa4xashJvXR9I-1741127485-1.0.1.1-qwV7jUv3haxZQCB9n0e7bkihyc8cRv.jvr424bc4Trd8Q1sKDivAvnSgfySqvwjJ.8.Yi2YG3tl2ZSHFYjdBasWQPdCDbBZjArvHMTPridc; path=/; expires=Tue, 04-Mar-25 23:01:25 GMT; domain=.groq.com; HttpOnly; Secure; SameSite=None', 'Server': 'cloudflare', 'CF-RAY': '91b4d2dbabf6cbc2-MAD', 'Content-Encoding': 'gzip'}
+
+Response JSON:
+{
+  "id": "chatcmpl-075be07c-a030-446b-ac8f-0c71c94452b7",
+  "object": "chat.completion",
+  "created": 1741127484,
+  "model": "llama3-8b-8192",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Fast language models have gained significant importance in recent years due to their ability to process and generate large amounts of text quickly and accurately. Here are some reasons why fast language models are crucial:\n\n1. **Scalability**: Fast language models can handle massive amounts of text data, making them ideal for large-scale applications such as text analysis, information retrieval, and natural language processing.\n2. **Speed**: Fast language models can process text quickly, which is essential for real-time applications like chatbots, voice assistants, and recommendation systems.\n3. **Accuracy**: Fast language models have improved accuracy due to advancements in language modeling techniques, such as attention mechanisms and subword modeling. This accuracy is critical for tasks like machine translation, text summarization, and question answering.\n4. **Real-time processing**: Fast language models can process text in real-time, enabling applications like live chat, voice assistants, and social media monitoring.\n5. **Handling large datasets**: Fast language models can efficiently process large datasets, which is essential for tasks like sentiment analysis, entity recognition, and topic modeling.\n6. **Improved user experience**: Fast language models can enable faster and more accurate responses to user queries, leading to a better user experience in applications like search engines, customer service chatbots, and content generation.\n7. **Supporting innovation**: Fast language models can accelerate innovation in areas like language translation, speech recognition, and text-to-speech synthesis.\n8. **Enhancing decision-making**: Fast language models can help in decision-making scenarios by quickly analyzing large volumes of text data, enabling faster and more informed decisions.\n9. **Autonomous systems**: Fast language models are essential for autonomous systems, such as self-driving cars, drones, and robots, which require fast and accurate text processing to make decisions.\n10. **Data analysis**: Fast language models can quickly process large datasets, enabling faster data analysis and insights, which is critical in areas like market research, customer analysis, and sentiment analysis.\n\nSome specific examples of applications that benefit from fast language models include:\n\n1. Conversational AI: Fast language models are used in chatbots and voice assistants to provide fast and accurate responses to user queries.\n2. Sentiment Analysis: Fast language models can quickly analyze large volumes of text data to extract sentiment and opinions.\n3. Language Translation: Fast language models can quickly translate text from one language to another.\n4. Text Classification: Fast language models can quickly classify text into categories like spam vs. non-spam emails.\n5. Text Summarization: Fast language models can quickly summarize large documents, articles, and other long pieces of text.\n6. Named Entity Recognition: Fast language models can quickly identify and extract specific entities from unstructured text data.\n\nIn summary, fast language models have become a crucial component in many applications, enabling faster and more accurate processing of large volumes of text data. Their importance is expected to continue growing as the amount and complexity of text data increase."
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "queue_time": 0.020933658,
+    "prompt_tokens": 18,
+    "prompt_time": 0.00257136,
+    "completion_tokens": 592,
+    "completion_time": 0.493333333,
+    "total_tokens": 610,
+    "total_time": 0.495904693
+  },
+  "system_fingerprint": "fp_179b0f92c9",
+  "x_groq": {
+    "id": "req_01jnhmj1d3fkba14bfdejg8apb"
+  }
+}
+
+Extracted content:
+Fast language models have gained significant importance in recent years due to their ability to process and generate large amounts of text quickly and accurately. Here are some reasons why fast language models are crucial:
+
+1. **Scalability**: Fast language models can handle massive amounts of text data, making them ideal for large-scale applications such as text analysis, information retrieval, and natural language processing.
+2. **Speed**: Fast language models can process text quickly, which is essential for real-time applications like chatbots, voice assistants, and recommendation systems.
+3. **Accuracy**: Fast language models have improved accuracy due to advancements in language modeling techniques, such as attention mechanisms and subword modeling. This accuracy is critical for tasks like machine translation, text summarization, and question answering.
+4. **Real-time processing**: Fast language models can process text in real-time, enabling applications like live chat, voice assistants, and social media monitoring.
+5. **Handling large datasets**: Fast language models can efficiently process large datasets, which is essential for tasks like sentiment analysis, entity recognition, and topic modeling.
+6. **Improved user experience**: Fast language models can enable faster and more accurate responses to user queries, leading to a better user experience in applications like search engines, customer service chatbots, and content generation.
+7. **Supporting innovation**: Fast language models can accelerate innovation in areas like language translation, speech recognition, and text-to-speech synthesis.
+8. **Enhancing decision-making**: Fast language models can help in decision-making scenarios by quickly analyzing large volumes of text data, enabling faster and more informed decisions.
+9. **Autonomous systems**: Fast language models are essential for autonomous systems, such as self-driving cars, drones, and robots, which require fast and accurate text processing to make decisions.
+10. **Data analysis**: Fast language models can quickly process large datasets, enabling faster data analysis and insights, which is critical in areas like market research, customer analysis, and sentiment analysis.
+
+Some specific examples of applications that benefit from fast language models include:
+
+1. Conversational AI: Fast language models are used in chatbots and voice assistants to provide fast and accurate responses to user queries.
+2. Sentiment Analysis: Fast language models can quickly analyze large volumes of text data to extract sentiment and opinions.
+3. Language Translation: Fast language models can quickly translate text from one language to another.
+4. Text Classification: Fast language models can quickly classify text into categories like spam vs. non-spam emails.
+5. Text Summarization: Fast language models can quickly summarize large documents, articles, and other long pieces of text.
+6. Named Entity Recognition: Fast language models can quickly identify and extract specific entities from unstructured text data.
+
+In summary, fast language models have become a crucial component in many applications, enabling faster and more accurate processing of large volumes of text data. Their importance is expected to continue growing as the amount and complexity of text data increase.
+
+Test completed. Check groq_hardcoded_test_log.txt for full results.

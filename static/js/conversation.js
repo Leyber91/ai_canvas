@@ -187,6 +187,22 @@ class ConversationManager {
             
             console.log('Formatted conversation history:', formattedHistory);
             
+            // Create a message div for the assistant's response
+            const assistantMessageDiv = document.createElement('div');
+            assistantMessageDiv.classList.add('message', 'assistant-message');
+            
+            // Initially show a typing indicator
+            const typingIndicator = document.createElement('div');
+            typingIndicator.classList.add('typing-indicator');
+            typingIndicator.innerHTML = '<span></span><span></span><span></span>';
+            assistantMessageDiv.appendChild(typingIndicator);
+            
+            this.chatMessages.appendChild(assistantMessageDiv);
+            this.scrollToBottom();
+            
+            // Determine if we should use streaming (only for Ollama)
+            const useStreaming = nodeData.backend === 'ollama';
+            
             const requestData = {
                 node_id: this.activeNodeId,
                 backend: nodeData.backend,
@@ -196,74 +212,159 @@ class ConversationManager {
                 conversation_history: formattedHistory,
                 user_input: userInput,
                 temperature: nodeData.temperature,
-                max_tokens: nodeData.maxTokens
+                max_tokens: nodeData.maxTokens,
+                stream: useStreaming
             };
             
             console.log('Full request data:', requestData);
             
-            // Add loading indicator
-            const loadingDiv = document.createElement('div');
-            loadingDiv.classList.add('message', 'assistant-message');
-            const loadingIndicator = document.createElement('div');
-            loadingIndicator.classList.add('loading');
-            loadingDiv.appendChild(loadingIndicator);
-            this.chatMessages.appendChild(loadingDiv);
-            this.scrollToBottom();
-            
-            // Send request to backend
-            const response = await fetch('/api/node/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestData)
-            });
-            
-            // Remove loading indicator
-            this.chatMessages.removeChild(loadingDiv);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            // Extract response content based on backend
-            let responseContent = '';
-            console.log(`Raw response data from ${nodeData.backend}:`, data);
-            
-            if (nodeData.backend === 'ollama') {
-                if (data.message && data.message.content) {
-                    responseContent = data.message.content;
-                } else if (data.error) {
-                    throw new Error(data.error);
-                } else {
-                    console.error('Unexpected Ollama response format:', data);
-                    responseContent = 'No response or unexpected format from Ollama';
+            if (useStreaming) {
+                // Handle streaming response for Ollama
+                let fullContent = '';
+                
+                // Create a text container to replace the typing indicator
+                const textContainer = document.createElement('div');
+                
+                // Set up EventSource for streaming
+                const response = await fetch('/api/node/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
-            } else if (nodeData.backend === 'groq') {
-                if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
-                    responseContent = data.choices[0].message.content;
-                } else if (data.error) {
-                    throw new Error(data.error.message || data.error);
-                } else {
-                    console.error('Unexpected Groq response format:', data);
-                    responseContent = 'No response or unexpected format from Groq';
+                
+                // Handle streaming response
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                // Replace typing indicator with text container
+                assistantMessageDiv.innerHTML = '';
+                assistantMessageDiv.appendChild(textContainer);
+                
+                // Process the stream
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) {
+                        break;
+                    }
+                    
+                    // Decode the chunk
+                    const chunk = decoder.decode(value, { stream: true });
+                    
+                    // Process the chunk (which may contain multiple SSE events)
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = line.substring(6);
+                            
+                            try {
+                                // Check if it's an error message
+                                if (data.includes('"error":')) {
+                                    const errorObj = JSON.parse(data);
+                                    throw new Error(errorObj.error);
+                                }
+                                
+                                // Add the content to our accumulated response
+                                fullContent += data;
+                                
+                                // Update the UI with the new content
+                                // Support basic markdown formatting
+                                let formattedContent = fullContent
+                                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+                                    .replace(/\*(.*?)\*/g, '<em>$1</em>')              // Italic
+                                    .replace(/`([^`]+)`/g, '<code>$1</code>')          // Inline code
+                                    .replace(/\n/g, '<br>');                          // Line breaks
+                                
+                                textContainer.innerHTML = formattedContent;
+                                this.scrollToBottom();
+                            } catch (e) {
+                                console.error('Error processing stream chunk:', e);
+                            }
+                        }
+                    }
                 }
+                
+                // Add to conversation history
+                this.conversations[this.activeNodeId].push({
+                    role: 'assistant',
+                    content: fullContent
+                });
+                
             } else {
-                responseContent = 'Unsupported backend';
+                // Non-streaming response (e.g., for Groq)
+                const response = await fetch('/api/node/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Extract response content based on backend
+                let responseContent = '';
+                console.log(`Raw response data from ${nodeData.backend}:`, data);
+                
+                if (nodeData.backend === 'ollama') {
+                    if (data.message && data.message.content) {
+                        responseContent = data.message.content;
+                    } else if (data.error) {
+                        throw new Error(data.error);
+                    } else {
+                        console.error('Unexpected Ollama response format:', data);
+                        responseContent = 'No response or unexpected format from Ollama';
+                    }
+                } else if (nodeData.backend === 'groq') {
+                    console.log('Raw Groq response:', data);
+                    if (data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
+                        responseContent = data.choices[0].message.content;
+                    } else if (data.error) {
+                        // Handle error object which could be a string or an object with a message property
+                        const errorMessage = typeof data.error === 'string' 
+                            ? data.error 
+                            : (data.error.message || JSON.stringify(data.error));
+                        throw new Error(errorMessage);
+                    } else {
+                        console.error('Unexpected Groq response format:', data);
+                        responseContent = 'No response or unexpected format from Groq';
+                    }
+                } else {
+                    responseContent = 'Unsupported backend';
+                }
+                
+                console.log(`Extracted response content from ${nodeData.backend} (${nodeData.model}):`, responseContent);
+                
+                // Replace typing indicator with actual content
+                assistantMessageDiv.innerHTML = '';
+                
+                // Support basic markdown formatting
+                let formattedContent = responseContent
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>')              // Italic
+                    .replace(/`([^`]+)`/g, '<code>$1</code>')          // Inline code
+                    .replace(/\n/g, '<br>');                          // Line breaks
+                
+                assistantMessageDiv.innerHTML = formattedContent;
+                
+                // Add to conversation history
+                this.conversations[this.activeNodeId].push({
+                    role: 'assistant',
+                    content: responseContent
+                });
             }
             
-            console.log(`Extracted response content from ${nodeData.backend} (${nodeData.model}):`, responseContent);
-            
-            // Add assistant message to UI
-            this.addMessageToUI('assistant', responseContent);
-            
-            // Add to conversation history
-            this.conversations[this.activeNodeId].push({
-                role: 'assistant',
-                content: responseContent
-            });
         } catch (error) {
             console.error('Error sending message:', error);
             

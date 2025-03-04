@@ -1,0 +1,31 @@
+Groq API Test Log
+==================
+
+Sending request to Groq API:
+API Key (first 5 chars): gsk_I...
+Model: llama-3.1-8b-versatile
+Messages: [{'role': 'system', 'content': 'You are a helpful assistant.'}, {'role': 'user', 'content': 'Hello, how are you today?'}]
+Temperature: 0.7
+Max tokens: 1024
+
+--- Trying with first test data ---
+
+Response status code: 401
+
+--- First request failed, trying with alternative test data ---
+Response status code: 401
+Response headers: {'Date': 'Tue, 04 Mar 2025 22:27:09 GMT', 'Content-Type': 'application/json', 'Content-Length': '96', 'Connection': 'keep-alive', 'Cache-Control': 'private, max-age=0, no-store, no-cache, must-revalidate', 'vary': 'Origin', 'x-groq-region': 'us-west-1', 'x-request-id': 'req_01jnhma84hfhe8xdgy794gf09v', 'via': '1.1 google', 'alt-svc': 'h3=":443"; ma=86400', 'cf-cache-status': 'DYNAMIC', 'Set-Cookie': '__cf_bm=YGlfiVZJLbg4Bw1qOqQvGTW.RnFlvC2e0KMHmFIWews-1741127229-1.0.1.1-.UDxGj.bKQ3F._4tkiC0R5UPrOn9hG0kh0Hd_FtPJ16WnnzK476FRrGTWXvUzVI7w3Hvm1ThT_GLrXZcfsheCbQMxzfUF7RRrI8PMWQ7o2E; path=/; expires=Tue, 04-Mar-25 22:57:09 GMT; domain=.groq.com; HttpOnly; Secure; SameSite=None', 'Server': 'cloudflare', 'CF-RAY': '91b4cca05c6e0329-MAD'}
+
+Response JSON:
+{
+  "error": {
+    "message": "Invalid API Key",
+    "type": "invalid_request_error",
+    "code": "invalid_api_key"
+  }
+}
+
+Error in response:
+{'message': 'Invalid API Key', 'type': 'invalid_request_error', 'code': 'invalid_api_key'}
+
+Test completed. Check groq_test_log.txt for full results.

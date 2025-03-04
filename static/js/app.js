@@ -38,13 +38,20 @@ document.addEventListener('DOMContentLoaded', () => {
     nodeForm.addEventListener('submit', handleNodeFormSubmit);
     backendSelect.addEventListener('change', updateModelOptions);
     
+    // Execute workflow button
+    const executeWorkflowBtn = document.getElementById('execute-workflow-btn');
+    executeWorkflowBtn.addEventListener('click', executeWorkflow);
+    
     // Update temperature value display
     temperatureInput.addEventListener('input', () => {
         temperatureValue.textContent = temperatureInput.value;
     });
     
-    // Context menu for node/edge operations
-    setupContextMenu();
+    // Node operations buttons instead of context menu
+    setupNodeOperations();
+    
+    // Fetch Groq model limits
+    fetchGroqModelLimits();
     
     // Load graph from localStorage if available
     loadSavedGraph();
@@ -154,31 +161,82 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function saveGraph() {
         try {
+            // Show saving indicator
+            const saveBtn = document.getElementById('save-graph-btn');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = 'Saving...';
+            saveBtn.disabled = true;
+            
             // Get graph data
             const graphData = window.graphManager.exportGraph();
-            const conversationsData = window.conversationManager.exportConversations();
+            
+            // Create a new graph or update existing one
+            const graphName = prompt('Enter a name for this graph:', 'My AI Canvas Graph');
+            if (!graphName) {
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
+                return; // User cancelled
+            }
+            
+            const graphDescription = prompt('Enter a description (optional):', '');
+            
+            // Prepare the data
+            const graphPayload = {
+                name: graphName,
+                description: graphDescription || '',
+                layout_data: {
+                    positions: window.graphManager.getNodePositions()
+                }
+            };
             
             // Save to backend
-            fetch('/api/graph', {
+            fetch('/api/graphs', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    graph: graphData,
-                    conversations: conversationsData
-                })
+                body: JSON.stringify(graphPayload)
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    alert('Graph saved successfully!');
+                    const graphId = data.data.id;
                     
-                    // Also save to localStorage as backup
-                    localStorage.setItem('aiCanvas_graph', JSON.stringify(graphData));
-                    localStorage.setItem('aiCanvas_conversations', JSON.stringify(conversationsData));
+                    // Now save all nodes
+                    const saveNodePromises = graphData.nodes.map(node => {
+                        return fetch(`/api/graphs/${graphId}/nodes`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(node)
+                        });
+                    });
+                    
+                    return Promise.all(saveNodePromises)
+                        .then(() => {
+                            // Now save all edges
+                            const saveEdgePromises = graphData.edges.map(edge => {
+                                return fetch('/api/edges', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify(edge)
+                                });
+                            });
+                            
+                            return Promise.all(saveEdgePromises);
+                        })
+                        .then(() => {
+                            alert(`Graph "${graphName}" saved successfully with ID: ${graphId}`);
+                            
+                            // Also save to localStorage as backup
+                            localStorage.setItem('aiCanvas_lastGraphId', graphId);
+                            localStorage.setItem('aiCanvas_graph', JSON.stringify(graphData));
+                        });
                 } else {
-                    throw new Error('Failed to save graph');
+                    throw new Error(data.message || 'Failed to save graph');
                 }
             })
             .catch(error => {
@@ -187,8 +245,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Save to localStorage as fallback
                 localStorage.setItem('aiCanvas_graph', JSON.stringify(graphData));
-                localStorage.setItem('aiCanvas_conversations', JSON.stringify(conversationsData));
                 alert('Graph saved to local storage as fallback.');
+            })
+            .finally(() => {
+                // Reset button
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
             });
         } catch (error) {
             console.error('Error preparing graph data:', error);
@@ -197,112 +259,450 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function loadGraph() {
+        // Show loading indicator
+        const loadBtn = document.getElementById('load-graph-btn');
+        const originalText = loadBtn.textContent;
+        loadBtn.textContent = 'Loading...';
+        loadBtn.disabled = true;
+        
         // First try to load from backend
-        fetch('/api/graph')
+        fetch('/api/graphs')
             .then(response => response.json())
             .then(data => {
-                if (data.nodes && data.edges) {
-                    // Load graph data
-                    window.graphManager.importGraph(data);
+                if (data.status === 'success' && data.data && data.data.length > 0) {
+                    // Show graph selection dialog
+                    const graphs = data.data;
                     
-                    // Try to load conversations
-                    fetch('/api/conversations')
-                        .then(response => response.json())
-                        .then(conversationsData => {
-                            window.conversationManager.importConversations(conversationsData);
-                        })
-                        .catch(error => {
-                            console.error('Error loading conversations:', error);
-                            // Try to load from localStorage as fallback
-                            loadConversationsFromLocalStorage();
+                    // Create a simple dialog for graph selection
+                    const dialogOverlay = document.createElement('div');
+                    dialogOverlay.style.position = 'fixed';
+                    dialogOverlay.style.top = '0';
+                    dialogOverlay.style.left = '0';
+                    dialogOverlay.style.width = '100%';
+                    dialogOverlay.style.height = '100%';
+                    dialogOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                    dialogOverlay.style.zIndex = '1000';
+                    dialogOverlay.style.display = 'flex';
+                    dialogOverlay.style.justifyContent = 'center';
+                    dialogOverlay.style.alignItems = 'center';
+                    
+                    const dialog = document.createElement('div');
+                    dialog.style.backgroundColor = 'white';
+                    dialog.style.padding = '20px';
+                    dialog.style.borderRadius = '5px';
+                    dialog.style.maxWidth = '500px';
+                    dialog.style.width = '90%';
+                    
+                    const title = document.createElement('h2');
+                    title.textContent = 'Select a Graph to Load';
+                    dialog.appendChild(title);
+                    
+                    const graphList = document.createElement('div');
+                    graphList.style.maxHeight = '300px';
+                    graphList.style.overflowY = 'auto';
+                    graphList.style.margin = '10px 0';
+                    
+                    graphs.forEach(graph => {
+                        const graphItem = document.createElement('div');
+                        graphItem.style.padding = '10px';
+                        graphItem.style.margin = '5px 0';
+                        graphItem.style.border = '1px solid #ddd';
+                        graphItem.style.borderRadius = '3px';
+                        graphItem.style.cursor = 'pointer';
+                        
+                        graphItem.innerHTML = `
+                            <strong>${graph.name}</strong>
+                            <div>${graph.description || 'No description'}</div>
+                            <div style="font-size: 0.8em; color: #666;">
+                                Created: ${new Date(graph.creation_date).toLocaleString()}
+                            </div>
+                        `;
+                        
+                        graphItem.addEventListener('click', () => {
+                            // Load the selected graph
+                            loadGraphById(graph.id);
+                            document.body.removeChild(dialogOverlay);
                         });
+                        
+                        graphList.appendChild(graphItem);
+                    });
+                    
+                    dialog.appendChild(graphList);
+                    
+                    const cancelButton = document.createElement('button');
+                    cancelButton.textContent = 'Cancel';
+                    cancelButton.style.padding = '8px 16px';
+                    cancelButton.style.marginTop = '10px';
+                    cancelButton.addEventListener('click', () => {
+                        document.body.removeChild(dialogOverlay);
+                        loadBtn.textContent = originalText;
+                        loadBtn.disabled = false;
+                    });
+                    
+                    dialog.appendChild(cancelButton);
+                    dialogOverlay.appendChild(dialog);
+                    document.body.appendChild(dialogOverlay);
                 } else {
-                    // If backend doesn't have data, try localStorage
+                    // If no graphs in backend, try localStorage
                     loadSavedGraph();
+                    loadBtn.textContent = originalText;
+                    loadBtn.disabled = false;
                 }
             })
             .catch(error => {
-                console.error('Error loading graph from backend:', error);
+                console.error('Error loading graphs from backend:', error);
                 // Try to load from localStorage as fallback
                 loadSavedGraph();
+                loadBtn.textContent = originalText;
+                loadBtn.disabled = false;
+            });
+    }
+    
+    function loadGraphById(graphId) {
+        // Show loading indicator
+        const loadBtn = document.getElementById('load-graph-btn');
+        const originalText = loadBtn.textContent;
+        loadBtn.textContent = 'Loading...';
+        loadBtn.disabled = true;
+        
+        fetch(`/api/graphs/${graphId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success' && data.data) {
+                    const graphData = data.data;
+                    
+                    // Clear existing graph
+                    window.graphManager.clearGraph();
+                    
+                    // Import nodes and edges
+                    window.graphManager.importGraph({
+                        nodes: graphData.nodes,
+                        edges: graphData.edges
+                    });
+                    
+                    // Apply layout if available
+                    if (graphData.layout_data && graphData.layout_data.positions) {
+                        window.graphManager.applyNodePositions(graphData.layout_data.positions);
+                    }
+                    
+                    // Store the current graph ID
+                    localStorage.setItem('aiCanvas_lastGraphId', graphId);
+                    
+                    alert(`Graph "${graphData.name}" loaded successfully!`);
+                } else {
+                    throw new Error(data.message || 'Failed to load graph');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading graph:', error);
+                alert('Error loading graph: ' + error.message);
+                
+                // Try to load from localStorage as fallback
+                loadSavedGraph();
+            })
+            .finally(() => {
+                // Reset button
+                loadBtn.textContent = originalText;
+                loadBtn.disabled = false;
             });
     }
     
     function loadSavedGraph() {
         try {
-            // Load graph from localStorage
+            // Try to load the last used graph ID
+            const lastGraphId = localStorage.getItem('aiCanvas_lastGraphId');
+            if (lastGraphId) {
+                // Try to load from backend first
+                loadGraphById(lastGraphId);
+                return;
+            }
+            
+            // If no last graph ID, try localStorage
             const savedGraph = localStorage.getItem('aiCanvas_graph');
             if (savedGraph) {
                 const graphData = JSON.parse(savedGraph);
                 window.graphManager.importGraph(graphData);
-                
-                // Load conversations
-                loadConversationsFromLocalStorage();
-                
                 console.log('Loaded graph from localStorage');
+                alert('Loaded graph from local storage (no database connection)');
+            } else {
+                alert('No saved graphs found.');
             }
         } catch (error) {
             console.error('Error loading saved graph:', error);
+            alert('Error loading saved graph: ' + error.message);
         }
     }
     
-    function loadConversationsFromLocalStorage() {
-        try {
-            const savedConversations = localStorage.getItem('aiCanvas_conversations');
-            if (savedConversations) {
-                const conversationsData = JSON.parse(savedConversations);
-                window.conversationManager.importConversations(conversationsData);
-                console.log('Loaded conversations from localStorage');
-            }
-        } catch (error) {
-            console.error('Error loading saved conversations:', error);
-        }
-    }
-    
-    function setupContextMenu() {
-        // Create context menu element
-        const contextMenu = document.createElement('div');
-        contextMenu.id = 'context-menu';
-        contextMenu.style.position = 'absolute';
-        contextMenu.style.display = 'none';
-        contextMenu.style.zIndex = '1000';
-        contextMenu.style.backgroundColor = 'white';
-        contextMenu.style.border = '1px solid #ccc';
-        contextMenu.style.borderRadius = '4px';
-        contextMenu.style.padding = '5px 0';
-        contextMenu.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
-        document.body.appendChild(contextMenu);
+    function executeWorkflow() {
+        // Get the current graph ID from localStorage
+        const graphId = localStorage.getItem('aiCanvas_lastGraphId');
         
-        // Context menu for nodes
-        window.graphManager.cy.on('cxttap', 'node', function(event) {
-            const node = event.target;
-            const nodeId = node.id();
+        if (!graphId) {
+            alert('Please save the graph first before executing the workflow.');
+            return;
+        }
+        
+        // Show execution in progress
+        const executeBtn = document.getElementById('execute-workflow-btn');
+        const originalText = executeBtn.textContent;
+        executeBtn.textContent = 'Executing...';
+        executeBtn.disabled = true;
+        
+        // Create a modal to show execution progress
+        const progressOverlay = document.createElement('div');
+        progressOverlay.style.position = 'fixed';
+        progressOverlay.style.top = '0';
+        progressOverlay.style.left = '0';
+        progressOverlay.style.width = '100%';
+        progressOverlay.style.height = '100%';
+        progressOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        progressOverlay.style.zIndex = '1000';
+        progressOverlay.style.display = 'flex';
+        progressOverlay.style.justifyContent = 'center';
+        progressOverlay.style.alignItems = 'center';
+        
+        const progressDialog = document.createElement('div');
+        progressDialog.style.backgroundColor = 'white';
+        progressDialog.style.padding = '20px';
+        progressDialog.style.borderRadius = '5px';
+        progressDialog.style.maxWidth = '600px';
+        progressDialog.style.width = '90%';
+        progressDialog.style.maxHeight = '80vh';
+        progressDialog.style.overflowY = 'auto';
+        
+        const progressTitle = document.createElement('h2');
+        progressTitle.textContent = 'Workflow Execution Progress';
+        progressDialog.appendChild(progressTitle);
+        
+        const progressContent = document.createElement('div');
+        progressContent.style.margin = '15px 0';
+        progressContent.innerHTML = '<p>Analyzing graph and determining execution order...</p>';
+        progressDialog.appendChild(progressContent);
+        
+        progressOverlay.appendChild(progressDialog);
+        document.body.appendChild(progressOverlay);
+        
+        // Execute the workflow
+        fetch(`/api/execute`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ graph_id: graphId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const executionOrder = data.data.execution_order;
+                const results = data.data.results;
+                
+                // Update progress dialog with execution results
+                let resultHtml = '<h3>Execution Order:</h3>';
+                resultHtml += '<ol>';
+                
+                executionOrder.forEach(nodeId => {
+                    const node = window.graphManager.getNodeData(nodeId);
+                    resultHtml += `<li><strong>${node ? node.name : nodeId}</strong></li>`;
+                });
+                
+                resultHtml += '</ol>';
+                
+                resultHtml += '<h3>Results:</h3>';
+                resultHtml += '<div style="margin-top: 10px;">';
+                
+                Object.keys(results).forEach(nodeId => {
+                    const node = window.graphManager.getNodeData(nodeId);
+                    const result = results[nodeId];
+                    
+                    resultHtml += `
+                        <div style="margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+                            <h4>${node ? node.name : nodeId}</h4>
+                            <div style="white-space: pre-wrap; font-family: monospace; margin-top: 5px; padding: 8px; background-color: #f5f5f5; border-radius: 3px; max-height: 200px; overflow-y: auto;">
+                                ${result.startsWith('Error:') ? 
+                                    `<span style="color: red;">${result}</span>` : 
+                                    result}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                resultHtml += '</div>';
+                
+                // Add a close button
+                resultHtml += `
+                    <div style="margin-top: 20px; text-align: right;">
+                        <button id="close-progress-btn" style="padding: 8px 16px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Close
+                        </button>
+                    </div>
+                `;
+                
+                progressContent.innerHTML = resultHtml;
+                
+                // Add event listener to close button
+                document.getElementById('close-progress-btn').addEventListener('click', () => {
+                    document.body.removeChild(progressOverlay);
+                });
+                
+                // Refresh conversations after execution
+                Object.keys(results).forEach(nodeId => {
+                    // If this node is currently active, refresh its conversation display
+                    if (window.conversationManager.activeNodeId === nodeId) {
+                        window.conversationManager.displayConversation(nodeId);
+                    }
+                });
+                
+            } else {
+                progressContent.innerHTML = `
+                    <div style="color: red; margin: 15px 0;">
+                        <p>Error executing workflow: ${data.message}</p>
+                    </div>
+                    <div style="margin-top: 20px; text-align: right;">
+                        <button id="close-progress-btn" style="padding: 8px 16px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Close
+                        </button>
+                    </div>
+                `;
+                
+                document.getElementById('close-progress-btn').addEventListener('click', () => {
+                    document.body.removeChild(progressOverlay);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error executing workflow:', error);
             
-            // Position menu
-            const position = event.renderedPosition;
-            contextMenu.style.left = position.x + 'px';
-            contextMenu.style.top = position.y + 'px';
+            progressContent.innerHTML = `
+                <div style="color: red; margin: 15px 0;">
+                    <p>Error executing workflow: ${error.message}</p>
+                </div>
+                <div style="margin-top: 20px; text-align: right;">
+                    <button id="close-progress-btn" style="padding: 8px 16px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Close
+                    </button>
+                </div>
+            `;
             
-            // Clear previous menu items
-            contextMenu.innerHTML = '';
+            document.getElementById('close-progress-btn').addEventListener('click', () => {
+                document.body.removeChild(progressOverlay);
+            });
+        })
+        .finally(() => {
+            // Reset button
+            executeBtn.textContent = originalText;
+            executeBtn.disabled = false;
+        });
+    }
+    
+    // Fetch Groq model limits from the backend
+    async function fetchGroqModelLimits() {
+        try {
+            const response = await fetch('/api/groq/model-limits');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             
-            // Add menu items
-            addMenuItem(contextMenu, 'Remove Node', () => {
+            const modelLimits = await response.json();
+            console.log('Groq model limits:', modelLimits);
+            
+            // Store the limits for later use
+            window.groqModelLimits = modelLimits;
+            
+            // Update the model select dropdown to show limits
+            updateModelOptionsWithLimits();
+        } catch (error) {
+            console.error('Error fetching Groq model limits:', error);
+        }
+    }
+    
+    // Update model options with limits information
+    function updateModelOptionsWithLimits() {
+        if (backendSelect.value === 'groq' && window.groqModelLimits) {
+            const models = availableModels.groq || [];
+            
+            // Clear existing options
+            modelSelect.innerHTML = '';
+            
+            if (models.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No models available';
+                modelSelect.appendChild(option);
+            } else {
+                // Add models as options with limits info
+                models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    
+                    // Add limits info if available
+                    const limits = window.groqModelLimits[model];
+                    if (limits) {
+                        option.textContent = `${model} (${limits.req_per_day}/day, ${limits.tokens_per_min}/min)`;
+                        option.title = `Requests: ${limits.req_per_min}/min, ${limits.req_per_day}/day\nTokens: ${limits.tokens_per_min}/min, ${limits.tokens_per_day}/day`;
+                    } else {
+                        option.textContent = model;
+                    }
+                    
+                    modelSelect.appendChild(option);
+                });
+            }
+        } else {
+            // Fall back to regular update for non-Groq backends
+            updateModelOptions();
+        }
+    }
+    
+    // Override the original updateModelOptions function
+    const originalUpdateModelOptions = updateModelOptions;
+    updateModelOptions = function() {
+        if (backendSelect.value === 'groq' && window.groqModelLimits) {
+            updateModelOptionsWithLimits();
+        } else {
+            originalUpdateModelOptions();
+        }
+    };
+    
+    // Setup node operations buttons instead of context menu
+    function setupNodeOperations() {
+        // Create node operations container
+        const nodeOpsContainer = document.createElement('div');
+        nodeOpsContainer.id = 'node-operations';
+        nodeOpsContainer.className = 'node-operations';
+        document.querySelector('.node-info').appendChild(nodeOpsContainer);
+        
+        // Update node operations when a node is selected
+        document.addEventListener('nodeSelected', (event) => {
+            const nodeData = event.detail;
+            updateNodeOperations(nodeData.id);
+        });
+        
+        document.addEventListener('nodeDeselected', () => {
+            nodeOpsContainer.innerHTML = '';
+        });
+        
+        function updateNodeOperations(nodeId) {
+            nodeOpsContainer.innerHTML = '';
+            
+            // Add operation buttons
+            addOperationButton('Remove Node', () => {
                 window.graphManager.removeNode(nodeId);
-                hideContextMenu();
             });
             
-            addMenuItem(contextMenu, 'Clear Conversation', () => {
+            addOperationButton('Clear Conversation', () => {
                 window.conversationManager.clearConversation(nodeId);
-                hideContextMenu();
             });
             
-            addMenuItem(contextMenu, 'Add Connection', () => {
+            addOperationButton('Add Connection', () => {
                 // Start edge drawing mode
                 window.graphManager.cy.edges().unselectify();
                 window.graphManager.cy.nodes().selectify();
                 
-                const sourceNode = node;
+                const sourceNode = window.graphManager.cy.$(`#${nodeId}`);
+                
+                // Change button text to indicate mode
+                const button = nodeOpsContainer.querySelector('button:last-child');
+                button.textContent = 'Select Target Node...';
+                button.classList.add('active-operation');
                 
                 // One-time event for selecting target node
                 const selectTargetHandler = function(event) {
@@ -318,76 +718,78 @@ document.addEventListener('DOMContentLoaded', () => {
                         window.graphManager.cy.off('tap', selectTargetHandler);
                         window.graphManager.cy.nodes().unselectify();
                         window.graphManager.cy.edges().selectify();
+                        
+                        // Reset button
+                        button.textContent = 'Add Connection';
+                        button.classList.remove('active-operation');
                     }
                 };
                 
                 window.graphManager.cy.on('tap', selectTargetHandler);
-                
-                hideContextMenu();
             });
             
-            // Show menu
-            contextMenu.style.display = 'block';
-            
-            // Prevent default context menu
-            event.preventDefault();
-        });
-        
-        // Context menu for edges
-        window.graphManager.cy.on('cxttap', 'edge', function(event) {
-            const edge = event.target;
-            const edgeId = edge.id();
-            
-            // Position menu
-            const position = event.renderedPosition;
-            contextMenu.style.left = position.x + 'px';
-            contextMenu.style.top = position.y + 'px';
-            
-            // Clear previous menu items
-            contextMenu.innerHTML = '';
-            
-            // Add menu items
-            addMenuItem(contextMenu, 'Remove Connection', () => {
-                window.graphManager.removeEdge(edgeId);
-                hideContextMenu();
-            });
-            
-            // Show menu
-            contextMenu.style.display = 'block';
-            
-            // Prevent default context menu
-            event.preventDefault();
-        });
-        
-        // Hide context menu when clicking elsewhere
-        document.addEventListener('click', hideContextMenu);
-        window.graphManager.cy.on('tap', function(event) {
-            if (event.target === window.graphManager.cy) {
-                hideContextMenu();
+            // If this is a Groq node, add model limits info
+            const nodeData = window.graphManager.getNodeData(nodeId);
+            if (nodeData && nodeData.backend === 'groq' && window.groqModelLimits) {
+                const limits = window.groqModelLimits[nodeData.model];
+                if (limits) {
+                    const limitsInfo = document.createElement('div');
+                    limitsInfo.className = 'model-limits-info';
+                    limitsInfo.innerHTML = `
+                        <h4>Model Limits</h4>
+                        <div class="limits-grid">
+                            <div>Requests:</div>
+                            <div>${limits.req_per_min}/min, ${limits.req_per_day}/day</div>
+                            <div>Tokens:</div>
+                            <div>${limits.tokens_per_min}/min, ${limits.tokens_per_day === "No limit" ? "No limit/day" : limits.tokens_per_day + "/day"}</div>
+                        </div>
+                    `;
+                    nodeOpsContainer.appendChild(limitsInfo);
+                }
             }
-        });
-        
-        function addMenuItem(menu, text, callback) {
-            const item = document.createElement('div');
-            item.textContent = text;
-            item.style.padding = '8px 12px';
-            item.style.cursor = 'pointer';
-            
-            item.addEventListener('mouseenter', () => {
-                item.style.backgroundColor = '#f0f0f0';
-            });
-            
-            item.addEventListener('mouseleave', () => {
-                item.style.backgroundColor = 'transparent';
-            });
-            
-            item.addEventListener('click', callback);
-            
-            menu.appendChild(item);
         }
         
-        function hideContextMenu() {
-            contextMenu.style.display = 'none';
+        function addOperationButton(text, callback) {
+            const button = document.createElement('button');
+            button.textContent = text;
+            button.className = 'node-op-btn';
+            button.addEventListener('click', callback);
+            nodeOpsContainer.appendChild(button);
+            return button;
         }
     }
+    
+    // Add event listener for edge operations
+    window.graphManager.cy.on('tap', 'edge', function(event) {
+        const edge = event.target;
+        const edgeId = edge.id();
+        
+        // Create a temporary floating button to remove the edge
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Remove Connection';
+        removeBtn.className = 'floating-edge-btn';
+        
+        // Position near the edge
+        const position = event.renderedPosition;
+        removeBtn.style.position = 'absolute';
+        removeBtn.style.left = position.x + 'px';
+        removeBtn.style.top = position.y + 'px';
+        removeBtn.style.zIndex = '1000';
+        
+        // Add click handler
+        removeBtn.addEventListener('click', () => {
+            window.graphManager.removeEdge(edgeId);
+            document.body.removeChild(removeBtn);
+        });
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            if (document.body.contains(removeBtn)) {
+                document.body.removeChild(removeBtn);
+            }
+        }, 3000);
+        
+        // Add to document
+        document.body.appendChild(removeBtn);
+    });
 });
