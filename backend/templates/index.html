@@ -1,106 +1,205 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Canvas - Dynamic Node Interaction</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <!-- Cytoscape.js for graph visualization -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Canvas - Dynamic Node Interaction</title>
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <!-- Cytoscape.js for graph visualization -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
+
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>AI Canvas</h1>
-            <div class="controls">
-                <button id="add-node-btn">Add Node</button>
-                <button id="save-graph-btn">Save Graph</button>
-                <button id="load-graph-btn">Load Graph</button>
-            </div>
-        </header>
-        
-        <main>
-            <div class="canvas-container">
-                <div id="cy"></div>
-            </div>
-            
-            <div class="conversation-panel">
-                <div class="node-info">
-                    <h2 id="active-node-title">No Active Node</h2>
-                    <div id="node-details">
-                        <p>Select a node to view details</p>
-                    </div>
-                </div>
-                
-                <div class="chat-container">
-                    <div id="chat-messages"></div>
-                    
-                    <div class="chat-input-container">
-                        <textarea id="chat-input" placeholder="Type your message here..." disabled></textarea>
-                        <button id="send-btn" disabled>Send</button>
-                    </div>
-                    
-                    <div class="workflow-controls">
-                        <button id="execute-workflow-btn" class="execute-btn">Execute Workflow</button>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
-    
-    <!-- Node configuration modal -->
-    <div id="node-modal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Configure Node</h2>
-            
-            <form id="node-form">
-                <div class="form-group">
-                    <label for="node-name">Node Name:</label>
-                    <input type="text" id="node-name" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="backend-select">Backend:</label>
-                    <select id="backend-select" required>
-                        <option value="ollama">Ollama</option>
-                        <option value="groq">Groq</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="model-select">Model:</label>
-                    <select id="model-select" required>
-                        <option value="">Loading models...</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="system-message">System Message:</label>
-                    <textarea id="system-message" placeholder="e.g., You are a helpful assistant" required></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="temperature">Temperature:</label>
-                    <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7">
-                    <span id="temperature-value">0.7</span>
-                </div>
-                
-                <div class="form-group">
-                    <label for="max-tokens">Max Tokens:</label>
-                    <input type="number" id="max-tokens" min="1" max="4096" value="1024">
-                </div>
-                
-                <div class="form-actions">
-                    <button type="submit">Save Node</button>
-                    <button type="button" id="cancel-btn">Cancel</button>
-                </div>
-            </form>
+  <div class="container">
+    <header>
+      <div class="header-title">AI Canvas</div>
+      <div class="header-actions">
+        <button id="add-node-btn" class="btn btn-primary">Add Node</button>
+        <button id="save-graph-btn" class="btn">Save Graph</button>
+        <button id="load-graph-btn" class="btn">Load Graph</button>
+      </div>
+    </header>
+
+    <div class="main-content">
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h3>Nodes</h3>
+          <button id="toggle-sidebar-btn" class="btn-sm">
+            <span class="sr-only">Toggle Sidebar</span>
+            ≡
+          </button>
         </div>
+        <div class="sidebar-content">
+          <div class="search-container">
+            <input type="text" class="search-input" placeholder="Search nodes..." />
+            <span class="search-icon">🔍</span>
+          </div>
+          <div id="node-list"></div>
+        </div>
+        <div class="sidebar-footer">
+          <button id="add-node-btn-sidebar" class="btn btn-primary btn-sm">Add Node</button>
+        </div>
+      </div>
+
+      <div class="canvas-container">
+        <div id="cy"></div>
+
+        <!-- Graph controls -->
+        <div class="graph-controls">
+          <div class="graph-control-section">
+            <h4 class="control-section-title">Navigation</h4>
+            <div class="graph-control-group">
+              <button class="graph-control-button" id="zoom-in-btn" title="Zoom In">+</button>
+              <button class="graph-control-button" id="zoom-out-btn" title="Zoom Out">-</button>
+              <button class="graph-control-button" id="zoom-fit-btn" title="Fit to View">⊡</button>
+            </div>
+          </div>
+          <div class="graph-control-section">
+            <h4 class="control-section-title">Display</h4>
+            <div class="graph-control-group">
+              <button class="graph-control-button" id="toggle-grid-btn" title="Toggle Grid">⊞</button>
+              <button class="graph-control-button" id="toggle-minimap-btn" title="Toggle Minimap">◰</button>
+            </div>
+          </div>
+          <div class="graph-control-section layout-section">
+            <h4 class="control-section-title">Layout</h4>
+            <!-- Layout controls will be added here by JavaScript -->
+          </div>
+        </div>
+
+        <!-- Node info panel -->
+        <div class="node-info">
+          <div class="node-info-header">
+            <div class="node-info-title" id="node-info-title">Node Information</div>
+            <div class="node-info-close" id="node-info-close">×</div>
+          </div>
+          <div class="node-info-content" id="node-info-content"></div>
+        </div>
+
+        <!-- Workflow controls -->
+        <div class="workflow-controls">
+          <button id="execute-workflow-btn" class="btn btn-success">Execute Workflow</button>
+        </div>
+
+        <!-- Dark mode toggle -->
+        <button class="dark-mode-toggle" id="dark-mode-toggle" title="Toggle Dark Mode">
+          <span class="sr-only">Toggle Dark Mode</span>
+          ☾
+        </button>
+      </div>
+
+      <div class="conversation-panel">
+        <div class="conversation-header">
+          <h3 id="conversation-title">Conversation</h3>
+          <button id="toggle-conversation-btn" class="btn-sm">
+            <span class="sr-only">Toggle Conversation</span>
+            ×
+          </button>
+        </div>
+        <div id="node-details" class="node-details">
+          <p>Select a node to view details</p>
+        </div>
+        <div class="conversation-messages" id="conversation-messages"></div>
+        <div class="chat-input-container">
+          <div class="chat-input-wrapper">
+            <textarea id="chat-input" placeholder="Type your message here..." disabled></textarea>
+            <button id="send-btn" class="chat-send-button" disabled>➤</button>
+          </div>
+          <div class="model-limits-info">
+            <div class="model-limits-title">Model Limits</div>
+            <div class="model-limits-grid" id="model-limits-grid">
+              <div class="model-limits-label">Requests:</div>
+              <div class="model-limits-value" id="model-requests">-</div>
+              <div class="model-limits-label">Tokens:</div>
+              <div class="model-limits-value" id="model-tokens">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    
-    <script src="/static/js/graph.js"></script>
-    <script src="/static/js/conversation.js"></script>
-    <script src="/static/js/app.js"></script>
+  </div>
+
+  <!-- Node configuration modal -->
+  <div id="node-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Configure Node</h2>
+      <form id="node-form">
+        <div class="form-group">
+          <label for="node-name">Node Name:</label>
+          <input type="text" id="node-name" required />
+        </div>
+        <div class="form-group">
+          <label for="backend-select">Backend:</label>
+          <select id="backend-select" required>
+            <option value="ollama">Ollama</option>
+            <option value="groq">Groq</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="model-select">Model:</label>
+          <select id="model-select" required>
+            <option value="">Loading models...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="system-message">System Message:</label>
+          <textarea id="system-message" placeholder="e.g., You are a helpful assistant" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="temperature">Temperature:</label>
+          <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7" />
+          <span id="temperature-value">0.7</span>
+        </div>
+        <div class="form-group">
+          <label for="max-tokens">Max Tokens:</label>
+          <input type="number" id="max-tokens" min="1" max="4096" value="1024" />
+        </div>
+        <div class="form-actions">
+          <button type="button" id="cancel-btn" class="btn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Node</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Connection type editor modal -->
+  <div id="connection-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Edit Connection</h2>
+      <div class="connection-type-selector" id="connection-type-selector"></div>
+      <div class="form-actions">
+        <button type="button" id="connection-cancel-btn" class="btn">Cancel</button>
+        <button type="button" id="connection-save-btn" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load graph modules in the correct order -->
+  <script type="module" src="/static/js/modules/graph-base.js"></script>
+  <script type="module" src="/static/js/modules/graph-node-selection.js"></script>
+  <script type="module" src="/static/js/modules/graph-node-dragging.js"></script>
+  <script type="module" src="/static/js/modules/graph-edge-handling.js"></script>
+  <script type="module" src="/static/js/modules/graph-connection-ui.js"></script>
+  <script type="module" src="/static/js/modules/graph-context-menu.js"></script>
+  <script type="module" src="/static/js/modules/graph-modal.js"></script>
+  <!-- Include GraphInteractionBase before graph-interaction.js -->
+  <script type="module" src="/static/js/modules/graph-interaction-base.js"></script>
+  <script type="module" src="/static/js/graph-interaction.js"></script>
+
+  <!-- Load enhanced modules (deferred) -->
+  <script defer src="/static/js/modules/graph-enhanced-connections.js"></script>
+  <script defer src="/static/js/modules/graph-enhanced-workflow.js"></script>
+
+  <!-- Load core scripts (deferred) -->
+  <script defer src="/static/js/graph-core.js"></script>
+  <script defer src="/static/js/graph-navigation.js"></script>
+  <script defer src="/static/js/graph-layout.js"></script>
+  <script defer src="/static/js/graph-workflow.js"></script>
+  <script defer src="/static/js/graph.js"></script>
+  <script defer src="/static/js/conversation.js"></script>
+  <script defer src="/static/js/app.js"></script>
 </body>
 </html>

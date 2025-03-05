@@ -9,14 +9,21 @@ class ConversationManager {
         this.isProcessing = false;
         
         // DOM elements
-        this.chatMessages = document.getElementById('chat-messages');
+        this.chatMessages = document.getElementById('conversation-messages');
         this.chatInput = document.getElementById('chat-input');
         this.sendButton = document.getElementById('send-btn');
-        this.activeNodeTitle = document.getElementById('active-node-title');
+        this.activeNodeTitle = document.getElementById('conversation-title');
         this.nodeDetails = document.getElementById('node-details');
         
         // Initialize event listeners
         this.initEventListeners();
+        
+        console.log('ConversationManager initialized with elements:', {
+            chatMessages: this.chatMessages,
+            chatInput: this.chatInput,
+            sendButton: this.sendButton,
+            activeNodeTitle: this.activeNodeTitle
+        });
     }
 
     initEventListeners() {

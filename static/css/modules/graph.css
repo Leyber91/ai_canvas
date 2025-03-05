@@ -1,0 +1,214 @@
+/* Graph visualization styles */
+
+/* Cytoscape node styles */
+.node {
+    background-color: #3498db;
+    color: white;
+    text-align: center;
+    padding: 10px;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+}
+
+.ollama-node {
+    background-color: #3498db;
+}
+
+.groq-node {
+    background-color: #9b59b6;
+}
+
+/* Node type indicators and badges */
+.node-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #e74c3c;
+    color: white;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Node selection and states */
+.selected {
+    border-width: 3px;
+    border-color: #e74c3c;
+}
+
+.pinned {
+    border-width: 3px;
+    border-color: #27ae60;
+    border-style: double;
+}
+
+/* Node dragging */
+.dragging {
+    opacity: 0.8;
+    cursor: move;
+}
+
+/* Connection target highlighting */
+.potential-target {
+    border-width: 2px !important;
+    border-color: #3498db !important;
+    border-style: dashed !important;
+    cursor: pointer !important;
+}
+
+.hover-target {
+    border-width: 3px !important;
+    border-color: #2980b9 !important;
+    border-style: solid !important;
+    box-shadow: 0 0 10px rgba(52, 152, 219, 0.5) !important;
+}
+
+/* Temporary edge during connection creation */
+.temp-edge {
+    line-color: #3498db !important;
+    target-arrow-color: #3498db !important;
+    width: 2px !important;
+    line-style: dashed !important;
+    opacity: 0.7 !important;
+    z-index: 999 !important;
+}
+
+.grid-guideline {
+    position: absolute;
+    background-color: rgba(52, 152, 219, 0.5);
+    pointer-events: none;
+    z-index: 5;
+}
+
+.grid-guideline.horizontal {
+    height: 1px;
+    width: 100%;
+}
+
+.grid-guideline.vertical {
+    width: 1px;
+    height: 100%;
+}
+
+/* Grid background */
+.grid-background {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="%23fff"/><path d="M 0,0 L 0,20 M 0,0 L 20,0" stroke="%23eee" stroke-width="1"/></svg>') !important;
+    background-size: 20px 20px !important;
+}
+
+/* Execution visualization */
+.execution-path {
+    line-color: #3498db !important;
+    target-arrow-color: #3498db !important;
+    width: 4px !important;
+    transition: line-color 0.3s, target-arrow-color 0.3s, width 0.3s;
+}
+
+.active-execution-path {
+    line-color: #e74c3c !important;
+    target-arrow-color: #e74c3c !important;
+    width: 6px !important;
+    transition: line-color 0.3s, target-arrow-color 0.3s, width 0.3s;
+}
+
+.execution-active {
+    background-color: #e74c3c !important;
+    border-width: 3px !important;
+    border-color: #c0392b !important;
+    transition: background-color 0.3s, border-width 0.3s, border-color 0.3s;
+}
+
+.execution-completed {
+    background-color: #27ae60 !important;
+    border-width: 2px !important;
+    border-color: #219653 !important;
+    transition: background-color 0.3s, border-width 0.3s, border-color 0.3s;
+}
+
+.ollama-execution-node {
+    border-width: 2px !important;
+    border-color: #3498db !important;
+    border-style: dashed !important;
+}
+
+.groq-execution-node {
+    border-width: 2px !important;
+    border-color: #9b59b6 !important;
+    border-style: dashed !important;
+}
+
+/* Execution result tooltip */
+.execution-result-tooltip {
+    position: absolute;
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    max-width: 300px;
+    z-index: 1000;
+    display: none;
+}
+
+.execution-result-tooltip h4 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    color: #2c3e50;
+}
+
+.execution-result-tooltip .result-content {
+    max-height: 150px;
+    overflow-y: auto;
+    font-size: 12px;
+    white-space: pre-wrap;
+    background-color: #f5f5f5;
+    padding: 8px;
+    border-radius: 3px;
+}
+
+.execution-result-tooltip .error {
+    color: #e74c3c;
+}
+
+/* Context menu */
+.context-menu {
+    background-color: white;
+    border-radius: 5px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    z-index: 1000;
+    min-width: 180px;
+    font-size: 14px;
+}
+
+.context-menu-section {
+    padding: 5px 0;
+}
+
+.context-menu-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: flex;
+    align-items: center;
+}
+
+.context-menu-item:hover {
+    background-color: #f5f5f5;
+}
+
+.context-menu-icon {
+    margin-right: 8px;
+    width: 20px;
+    text-align: center;
+}
+
+.context-menu-separator {
+    height: 1px;
+    background-color: #e0e0e0;
+    margin: 5px 0;
+}

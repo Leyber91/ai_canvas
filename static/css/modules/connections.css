@@ -1,0 +1,206 @@
+/* Connection styles */
+
+/* Edge types */
+.edge-provides-context {
+    line-color: #3498db !important;
+    target-arrow-color: #3498db !important;
+    width: 2px !important;
+}
+
+.edge-controls-flow {
+    line-color: #e74c3c !important;
+    target-arrow-color: #e74c3c !important;
+    width: 2px !important;
+    line-style: dashed !important;
+}
+
+.edge-data-transfer {
+    line-color: #27ae60 !important;
+    target-arrow-color: #27ae60 !important;
+    width: 2px !important;
+    line-style: solid !important;
+}
+
+.edge-conditional {
+    line-color: #f39c12 !important;
+    target-arrow-color: #f39c12 !important;
+    width: 2px !important;
+    line-style: dotted !important;
+}
+
+/* Edge hover and selection */
+.edge-hover {
+    width: 4px !important;
+    opacity: 0.8;
+    z-index: 999;
+}
+
+.edge-selected {
+    width: 4px !important;
+    line-color: #9b59b6 !important;
+    target-arrow-color: #9b59b6 !important;
+    z-index: 999;
+}
+
+/* Connection type badge */
+.connection-type-badge {
+    position: absolute;
+    background-color: white;
+    border-radius: 4px;
+    padding: 2px 5px;
+    font-size: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    pointer-events: none;
+    z-index: 10;
+}
+
+.connection-type-badge.provides-context {
+    background-color: #3498db;
+    color: white;
+}
+
+.connection-type-badge.controls-flow {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.connection-type-badge.data-transfer {
+    background-color: #27ae60;
+    color: white;
+}
+
+.connection-type-badge.conditional {
+    background-color: #f39c12;
+    color: white;
+}
+
+/* Connection creation UI */
+.connection-creation-panel {
+    position: fixed;
+    bottom: 80px; /* Moved up to avoid overlapping with workflow controls */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    padding: 15px;
+    z-index: 1000;
+    width: 350px; /* Increased width for better readability */
+    display: none;
+}
+
+.connection-creation-panel h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: #333;
+}
+
+.connection-type-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.connection-type-option {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.connection-type-option:hover {
+    background-color: #f5f5f5;
+}
+
+.connection-type-option.selected {
+    background-color: #e3f2fd;
+}
+
+.connection-type-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.connection-type-color.provides-context {
+    background-color: #3498db;
+}
+
+.connection-type-color.controls-flow {
+    background-color: #e74c3c;
+}
+
+.connection-type-color.data-transfer {
+    background-color: #27ae60;
+}
+
+.connection-type-color.conditional {
+    background-color: #f39c12;
+}
+
+.connection-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* Connection tooltip */
+.connection-tooltip {
+    position: absolute;
+    background-color: white;
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    pointer-events: none;
+    z-index: 1000;
+    max-width: 200px;
+}
+
+.connection-tooltip-title {
+    font-weight: bold;
+    margin-bottom: 3px;
+    color: #333;
+}
+
+.connection-tooltip-type {
+    font-style: italic;
+    color: #666;
+    font-size: 11px;
+}
+
+/* Dark mode support */
+.dark-mode .connection-creation-panel {
+    background-color: #333;
+    color: #f5f5f5;
+}
+
+.dark-mode .connection-creation-panel h3 {
+    color: #f5f5f5;
+}
+
+.dark-mode .connection-type-option:hover {
+    background-color: #444;
+}
+
+.dark-mode .connection-type-option.selected {
+    background-color: #2c3e50;
+}
+
+.dark-mode .connection-tooltip {
+    background-color: #333;
+    color: #f5f5f5;
+}
+
+.dark-mode .connection-tooltip-title {
+    color: #f5f5f5;
+}
+
+.dark-mode .connection-tooltip-type {
+    color: #ccc;
+}

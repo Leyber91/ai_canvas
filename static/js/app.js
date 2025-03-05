@@ -13,6 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
         groq: []
     };
     
+    // Initialize dark mode
+    initDarkMode();
+    
     // DOM elements
     const addNodeBtn = document.getElementById('add-node-btn');
     const saveGraphBtn = document.getElementById('save-graph-btn');
@@ -662,6 +665,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
+    // Setup dark mode toggle
+    function initDarkMode() {
+        // Create dark mode toggle button
+        const darkModeToggle = document.createElement('button');
+        darkModeToggle.className = 'dark-mode-toggle';
+        darkModeToggle.title = 'Toggle Dark Mode';
+        darkModeToggle.innerHTML = '🌙'; // Moon emoji for dark mode
+        
+        // Check for saved preference
+        const darkModeEnabled = localStorage.getItem('aiCanvas_darkMode') === 'true';
+        if (darkModeEnabled) {
+            document.body.classList.add('dark-mode');
+            darkModeToggle.innerHTML = '☀️'; // Sun emoji for light mode
+        }
+        
+        // Add click handler
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            
+            // Update button icon
+            darkModeToggle.innerHTML = isDarkMode ? '☀️' : '🌙';
+            
+            // Save preference
+            localStorage.setItem('aiCanvas_darkMode', isDarkMode);
+            
+            // Update graph styles if needed
+            if (window.graphManager && window.graphManager.cy) {
+                window.graphManager.cy.style().update();
+            }
+        });
+        
+        // Add to document
+        document.body.appendChild(darkModeToggle);
+    }
+    
     // Setup node operations buttons instead of context menu
     function setupNodeOperations() {
         // Create node operations container
@@ -693,37 +732,23 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             addOperationButton('Add Connection', () => {
-                // Start edge drawing mode
-                window.graphManager.cy.edges().unselectify();
-                window.graphManager.cy.nodes().selectify();
-                
-                const sourceNode = window.graphManager.cy.$(`#${nodeId}`);
+                // Start edge drawing mode using the GraphInteraction module
+                window.graphManager.interaction.startEdgeDrawing(nodeId);
                 
                 // Change button text to indicate mode
                 const button = nodeOpsContainer.querySelector('button:last-child');
-                button.textContent = 'Select Target Node...';
+                button.textContent = 'Creating Connection...';
                 button.classList.add('active-operation');
                 
-                // One-time event for selecting target node
-                const selectTargetHandler = function(event) {
-                    if (event.target !== window.graphManager.cy && event.target.isNode()) {
-                        const targetNode = event.target;
-                        
-                        // Don't allow self-connections
-                        if (targetNode.id() !== sourceNode.id()) {
-                            window.graphManager.addEdge(sourceNode.id(), targetNode.id());
-                        }
-                        
-                        // Clean up
-                        window.graphManager.cy.off('tap', selectTargetHandler);
-                        window.graphManager.cy.nodes().unselectify();
-                        window.graphManager.cy.edges().selectify();
-                        
-                        // Reset button
-                        button.textContent = 'Add Connection';
-                        button.classList.remove('active-operation');
-                    }
+                // Set up a one-time event listener to reset the button when connection is complete
+                const resetButtonHandler = function() {
+                    // Reset button
+                    button.textContent = 'Add Connection';
+                    button.classList.remove('active-operation');
+                    document.removeEventListener('connectionComplete', resetButtonHandler);
                 };
+                
+                document.addEventListener('connectionComplete', resetButtonHandler, { once: true });
                 
                 window.graphManager.cy.on('tap', selectTargetHandler);
             });
