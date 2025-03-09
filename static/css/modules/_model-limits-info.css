@@ -1,0 +1,26 @@
+/* _model-limits-info.css */
+
+.model-limits-info {
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.8rem;
+    background-color: #f1f8ff;
+    border: 1px solid #d1e5f9;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.model-limits-info h4 {
+    margin-bottom: 0.5rem;
+    color: #2980b9;
+}
+
+.limits-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.3rem 0.8rem;
+}
+
+.limits-grid > div:nth-child(odd) {
+    font-weight: 500;
+}

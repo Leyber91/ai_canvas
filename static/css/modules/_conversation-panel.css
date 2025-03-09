@@ -1,0 +1,8 @@
+/* _conversation-panel.css */
+
+.conversation-panel {
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    background-color: #ecf0f1;
+}

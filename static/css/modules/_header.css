@@ -1,0 +1,21 @@
+/* _header.css */
+/* Header styles */
+
+header {
+    background-color: #2c3e50;
+    color: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #333; /* if you want a darker border */
+}
+
+header h1 {
+    font-size: 1.5rem;
+}
+
+.controls {
+    display: flex;
+    gap: 0.5rem;
+}

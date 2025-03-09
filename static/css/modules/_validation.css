@@ -1,0 +1,21 @@
+/* _validation.css */
+
+.validation-success {
+    padding: 10px;
+    background-color: #d5f5e3;
+    border-radius: 4px;
+    color: #27ae60;
+    font-weight: 500;
+}
+
+.validation-errors {
+    margin-bottom: 10px;
+}
+
+.empty-plan,
+.empty-results {
+    padding: 20px;
+    text-align: center;
+    color: #7f8c8d;
+    font-style: italic;
+}

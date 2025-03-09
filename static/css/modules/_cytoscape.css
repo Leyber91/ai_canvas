@@ -1,0 +1,17 @@
+/* _cytoscape.css */
+
+.node {
+    background-color: #3498db;
+    color: white;
+    text-align: center;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.ollama-node {
+    background-color: #3498db;
+}
+
+.groq-node {
+    background-color: #9b59b6;
+}
