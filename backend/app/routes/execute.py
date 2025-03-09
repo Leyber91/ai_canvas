@@ -7,7 +7,7 @@ from flask import request, jsonify, current_app
 from . import api_bp
 from ..services import graph_service
 
-@api_bp.route('/execute', methods=['POST'])
+@api_bp.route('/workflow/execute', methods=['POST'])
 def execute_workflow():
     """Execute a workflow by processing nodes in topological order."""
     data = request.json

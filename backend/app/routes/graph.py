@@ -425,3 +425,4 @@ def reset_database():
             'status': 'error',
             'message': f'Failed to reset database: {str(e)}'
         }), 500
+

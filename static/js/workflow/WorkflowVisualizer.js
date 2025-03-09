@@ -355,15 +355,37 @@ export class WorkflowVisualizer {
         
         // Create pulsing animation if browser supports it
         if (node.animation) {
-          node.animation({
+          // Create a sequence of animations instead of chaining them incorrectly
+          const animation1 = node.animation({
             style: { 'border-width': 5 },
             duration: 800
-          })
-          .animation({
+          });
+          
+          const animation2 = node.animation({
             style: { 'border-width': 3 },
             duration: 800
-          })
-          .play().repeat().sync();
+          });
+          
+          // Play animations in sequence
+          animation1.play()
+            .promise()
+            .then(() => {
+              animation2.play()
+                .promise()
+                .then(() => {
+                  // Create a repeating pattern by executing both animations again
+                  const loop = () => {
+                    animation1.play()
+                      .promise()
+                      .then(() => {
+                        animation2.play()
+                          .promise()
+                          .then(loop);
+                      });
+                  };
+                  loop();
+                });
+            });
         }
         
         // Center view on the executing node
@@ -496,26 +518,31 @@ export class WorkflowVisualizer {
      * 
      * @param {Object} data - Event data
      */
-        // In WorkflowVisualizer.js
-        handleWorkflowCompleted(data) {
-            console.log("Workflow completed: ", data);
-            
-            // Ensure we have valid data to work with
-            if (!data) return;
-            
-            // Handle different data formats
-            const executionOrder = Array.isArray(data.executionOrder) ? 
-            data.executionOrder : 
-            (Array.isArray(data.execution_order) ? data.execution_order : []);
-            
-            const results = data.results || {};
-            
-            // Visualize the complete execution path
-            this.visualizeExecutionPath(
-            executionOrder, 
-            results
-            );
+    handleWorkflowCompleted(data) {
+        console.log("Workflow completed: ", data);
+        
+        // Ensure we have valid data to work with
+        if (!data) return;
+        
+        // Handle different data formats
+        const executionOrder = Array.isArray(data.executionOrder) ? 
+        data.executionOrder : 
+        (Array.isArray(data.execution_order) ? data.execution_order : []);
+        
+        const results = data.results || {};
+        
+        // Extract node IDs if executionOrder contains objects
+        let nodeIds = [];
+        
+        if (executionOrder.length > 0 && typeof executionOrder[0] === 'object') {
+            nodeIds = executionOrder.map(item => item.nodeId);
+        } else {
+            nodeIds = executionOrder;
         }
+        
+        // Visualize the complete execution path
+        this.visualizeExecutionPath(nodeIds, results);
+    }
     
     /**
      * Handle workflow failed event

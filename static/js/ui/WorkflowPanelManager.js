@@ -33,10 +33,12 @@ export class WorkflowPanelManager {
         this.currentGraphInfo = null;
     }
 
-    /**
-     * Initialize the workflow panel manager
-     */
-    initialize() {
+/**
+ * Initialize the workflow panel manager
+ */
+initialize() {
+    // Execute after DOM is fully loaded
+    const initComponents = () => {
         try {
             // Create the workflow panel container
             this.createWorkflowPanel();
@@ -51,15 +53,90 @@ export class WorkflowPanelManager {
             // Insert the panel before any existing content
             workflowControls.insertBefore(this.container, workflowControls.firstChild);
 
-            // Add event listeners for workflow events
-            this.eventBus.subscribe('workflow:executing', (data) => this.handleWorkflowExecuting(data));
-            this.eventBus.subscribe('workflow:node-executing', (data) => this.handleNodeExecuting(data));
-            this.eventBus.subscribe('workflow:completed', (data) => this.handleWorkflowCompleted(data));
-            this.eventBus.subscribe('workflow:failed', (data) => this.handleWorkflowFailed(data));
+            // Verify critical DOM elements are available
+            if (!this.executionStepsDisplay) console.warn('Execution steps display element not available');
+            if (!this.resultsDisplay) console.warn('Results display element not available');
+            if (!this.errorsDisplay) console.warn('Errors display element not available');
+
+            // Add event listeners for workflow events with safe execution wrappers
+            this.eventBus.subscribe('workflow:executing', (data) => this.safeExecute(() => this.handleWorkflowExecuting(data)));
+            this.eventBus.subscribe('workflow:node-executing', (data) => this.safeExecute(() => this.handleNodeExecuting(data)));
+            this.eventBus.subscribe('workflow:completed', (data) => this.safeExecute(() => this.handleWorkflowCompleted(data)));
+            this.eventBus.subscribe('workflow:failed', (data) => this.safeExecute(() => this.handleWorkflowFailed(data)));
 
             console.log('Workflow Panel Manager initialized with event subscriptions');
         } catch (error) {
             console.error('Error initializing WorkflowPanelManager:', error);
+        }
+    };
+
+    // Ensure we initialize after DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initComponents);
+    } else {
+        // DOM already loaded, execute immediately
+        initComponents();
+    }
+}
+
+/**
+ * Safely execute a function with error handling
+ * 
+ * @param {Function} fn - Function to execute
+ * @param {any} fallback - Fallback value if execution fails
+ * @returns {any} Result of function or fallback
+ */
+safeExecute(fn, fallback = null) {
+    try {
+        return fn();
+    } catch (error) {
+        console.error('Error in WorkflowPanelManager function execution:', error);
+        return typeof fallback === 'function' ? fallback() : fallback;
+    }
+}
+
+    /**
+     * Handle workflow executing event
+     * @param {Object} data - Event data
+     */
+    handleWorkflowExecuting(data) {
+        console.log("Workflow execution started:", data);
+        
+        try {
+            const { graphId } = data;
+            
+            // Update status display
+            this.updateStatus('Executing', 'executing');
+            
+            // Reset progress to 0%
+            this.updateProgress(0);
+            
+            // Update execution state
+            this.isExecuting = true;
+            
+            // Update buttons state
+            if (this.executeBtn) this.executeBtn.disabled = true;
+            if (this.stopBtn) this.stopBtn.disabled = false;
+            
+            // Clear any previous results
+            this.executionResults = {};
+            
+            // Clear any previous errors
+            if (this.errorsContainer) {
+                this.errorsContainer.classList.add('hidden');
+            }
+            
+            // Prepare the execution steps display
+            if (this.executionStepsDisplay) {
+                this.executionStepsDisplay.innerHTML = '<div class="loading">Executing workflow...</div>';
+            }
+            
+            // Prepare the results display
+            if (this.resultsDisplay) {
+                this.resultsDisplay.innerHTML = '<div class="empty-results">Execution in progress...</div>';
+            }
+        } catch (error) {
+            console.error("Error handling workflow execution start:", error);
         }
     }
 
@@ -451,18 +528,28 @@ export class WorkflowPanelManager {
         try {
             this.updateStatus('Validating', 'executing');
 
+            // Check if executionStepsDisplay exists before trying to use it
+            if (!this.executionStepsDisplay) {
+                console.warn('Execution steps display element not found in DOM');
+                return false;
+            }
+
             // Check if validateWorkflow method exists
-            if (!this.workflowManager.validateWorkflow) {
+            if (!this.workflowManager || !this.workflowManager.validateWorkflow) {
                 this.showError('Validation method not available');
-                return;
+                return false;
             }
 
             const validation = this.workflowManager.validateWorkflow();
 
             if (validation.success) {
                 this.updateStatus('Valid', 'success');
-                this.executionStepsDisplay.innerHTML =
-                    '<div class="validation-success">Workflow is valid and ready to execute</div>';
+                
+                // Safe check before setting innerHTML
+                if (this.executionStepsDisplay) {
+                    this.executionStepsDisplay.innerHTML =
+                        '<div class="validation-success">Workflow is valid and ready to execute</div>';
+                }
 
                 // Show the execution plan
                 this.showExecutionPlan();
@@ -471,12 +558,16 @@ export class WorkflowPanelManager {
                 if (this.errorsContainer) {
                     this.errorsContainer.classList.add('hidden');
                 }
+                
+                return true;
             } else {
                 this.showValidationErrors(validation);
+                return false;
             }
         } catch (error) {
             console.error('Validation error:', error);
             this.showError(`Error validating workflow: ${error.message || 'Unknown error'}`);
+            return false;
         }
     }
 
@@ -821,6 +912,31 @@ export class WorkflowPanelManager {
     }
 
     /**
+     * Handle workflow failed event
+     * @param {Object} data - Event data
+     */
+    handleWorkflowFailed(data) {
+        try {
+            console.error("Workflow execution failed:", data.error);
+            
+            // Update status display
+            this.updateStatus('Failed', 'error');
+            
+            // Reset execution state
+            this.isExecuting = false;
+            
+            // Update buttons state
+            if (this.executeBtn) this.executeBtn.disabled = false;
+            if (this.stopBtn) this.stopBtn.disabled = true;
+            
+            // Show error message
+            this.showError(data.error || 'Unknown error during workflow execution');
+        } catch (error) {
+            console.error("Error handling workflow failure:", error);
+        }
+    }
+
+    /**
      * Handle node executing event
      * @param {Object} data - Event data
      */
@@ -873,4 +989,7 @@ export class WorkflowPanelManager {
             console.error('Error in handleNodeExecuting:', error);
         }
     }
+
+
+    
 }

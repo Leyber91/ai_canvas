@@ -4,189 +4,264 @@
  * Handles saving, loading, and managing graph persistence.
  */
 export class GraphStorage {
-    /**
-     * @param {GraphManager} graphManager - The parent graph manager
-     */
-    constructor(graphManager) {
-      this.graphManager = graphManager;
-    }
-    
-/**
- * Save the current graph to the server
- * 
- * @param {string} name - Name of the graph
- * @param {string} description - Description of the graph
- * @param {boolean} forceNew - Whether to create a new graph even if current graph exists
- * @returns {Promise<Object>} Saved graph data
- */
-async saveGraph(name, description = '', forceNew = false) {
-    try {
-      // Get graph data
-      const graphData = this.graphManager.exportGraph();
-      
-      // Prepare the payload
-      const graphPayload = {
-        name,
-        description,
-        layout_data: {
-          positions: this.graphManager.layoutManager.getNodePositions()
+  /**
+   * @param {GraphManager} graphManager - The parent graph manager
+   */
+  constructor(graphManager) {
+    this.graphManager = graphManager;
+    // Create a reference to apiClient to avoid inconsistencies
+    this.apiClient = graphManager.apiClient;
+  }
+  
+  /**
+   * Save graph to server with improved error handling and sync
+   * 
+   * @param {string} name - Graph name
+   * @param {string} description - Graph description
+   * @param {boolean} forceNew - Force create as new graph
+   * @returns {Promise<Object>} Saved graph data
+   */
+  async saveGraph(name, description, forceNew = false) {
+      try {
+        // Export graph data
+        const graphData = this.graphManager.exportGraph();
+        graphData.name = name || graphData.name;
+        graphData.description = description || '';
+        
+        // If we have an existing graph ID and not forcing new, update it
+        if (this.graphManager.getCurrentGraphId() && !forceNew) {
+          const graphId = this.graphManager.getCurrentGraphId();
+          
+          // Get current server state first to compare
+          let serverGraph;
+          try {
+            const response = await this.apiClient.get(`/api/graphs/${graphId}`);
+            serverGraph = response.data;
+          } catch (error) {
+            console.warn(`Could not fetch graph ${graphId} for comparison:`, error);
+            // Create a minimal server graph to compare against
+            serverGraph = { id: graphId, nodes: [], edges: [] };
+          }
+          
+          // Compute differential updates
+          const updates = this.computeDifferentialUpdates(serverGraph, graphData);
+          
+          // FIXED: Don't use batch endpoint, use individual API calls instead
+          console.log("Applying updates to graph:", updates);
+          await this.executeUpdates(graphId, updates);
+          
+          // Handle response
+          const result = {
+            id: graphId,
+            name: graphData.name,
+            description: graphData.description,
+            isNew: false
+          };
+          
+          return result;
+        } else {
+          // Create new graph (no need for batch operations)
+          const response = await this.apiClient.post('/api/graphs', {
+            name: graphData.name,
+            description: graphData.description,
+            nodes: graphData.nodes,
+            edges: graphData.edges
+          });
+          
+          return {
+            id: response.data.id,
+            name: response.data.name,
+            description: response.data.description,
+            isNew: true
+          };
         }
+      } catch (error) {
+        console.error('Error saving graph:', error);
+        throw error;
+      }
+  }
+    
+  /**
+   * Compute differential updates between server and client state
+   * 
+   * @param {Object} serverGraph - Current graph state on server
+   * @param {Object} clientGraph - Current graph state on client
+   * @returns {Object} Required updates
+   */
+  computeDifferentialUpdates(serverGraph, clientGraph) {
+      const updates = {
+        // Nodes to create/update/delete
+        nodesToCreate: [],
+        nodesToUpdate: [],
+        nodesToDelete: [],
+        
+        // Edges to create/delete
+        edgesToCreate: [],
+        edgesToDelete: []
       };
       
-      let graphId = this.graphManager.getCurrentGraphId();
-      let response;
+      // Find nodes to create or update
+      const serverNodeIds = new Set(serverGraph.nodes.map(n => n.id));
+      const clientNodeIds = new Set(clientGraph.nodes.map(n => n.id));
       
-      // Update existing graph or create new one
-      if (graphId && !forceNew) {
-        // Update existing graph
-        response = await this.graphManager.apiClient.put(`/graphs/${graphId}`, graphPayload);
-        
-        if (response.status !== 'success') {
-          throw new Error(response.message || 'Failed to update graph');
-        }
-        
-        // Delete existing nodes and edges for a clean update
-        // This avoids orphaned nodes/edges if some were removed
-        await this.clearGraphData(graphId);
-      } else {
-        // Create a new graph
-        response = await this.graphManager.apiClient.post('/graphs', graphPayload);
-        
-        if (response.status !== 'success') {
-          throw new Error(response.message || 'Failed to create graph');
-        }
-        
-        // Set the new graph ID
-        graphId = response.data.id;
-        this.graphManager.setCurrentGraph(graphId, name);
-      }
-      
-      // Save all nodes with error handling
-      const nodePromises = [];
-      for (const node of graphData.nodes) {
-        // Ensure position is properly formatted to avoid backend errors
-        const nodeWithPosition = {
-          ...node,
-          position: {
-            x: node.position?.x || 0,
-            y: node.position?.y || 0
+      // Nodes in client but not in server should be created
+      clientGraph.nodes.forEach(node => {
+        if (!serverNodeIds.has(node.id)) {
+          updates.nodesToCreate.push(node);
+        } else {
+          // Node exists in both - check if it needs update
+          const serverNode = serverGraph.nodes.find(n => n.id === node.id);
+          if (JSON.stringify(serverNode) !== JSON.stringify(node)) {
+            updates.nodesToUpdate.push(node);
           }
-        };
-        
-        // Ensure node is associated with this graph
-        nodeWithPosition.graph_id = graphId;
-        
-        const nodePromise = this.graphManager.apiClient.post(`/graphs/${graphId}/nodes`, nodeWithPosition)
-          .catch(err => {
-            console.error(`Error saving node ${node.id}:`, err);
-            // Return null but don't reject the whole operation
-            return null;
-          });
-        
-        nodePromises.push(nodePromise);
-      }
-      
-      // Wait for all node save operations to complete
-      const nodeResults = await Promise.all(nodePromises);
-      const failedNodes = nodeResults.filter(r => r === null).length;
-      if (failedNodes > 0) {
-        console.warn(`${failedNodes} nodes failed to save`);
-      }
-      
-      // Save all edges with error handling
-      const edgePromises = [];
-      for (const edge of graphData.edges) {
-        const edgePromise = this.graphManager.apiClient.post('/edges', edge)
-          .catch(err => {
-            console.error(`Error saving edge ${edge.id}:`, err);
-            // Return null but don't reject the whole operation
-            return null;
-          });
-        
-        edgePromises.push(edgePromise);
-      }
-      
-      // Wait for all edge save operations to complete
-      const edgeResults = await Promise.all(edgePromises);
-      const failedEdges = edgeResults.filter(r => r === null).length;
-      if (failedEdges > 0) {
-        console.warn(`${failedEdges} edges failed to save`);
-      }
-      
-      // Save to localStorage as backup
-      this.graphManager.storageManager.setItem('aiCanvas_lastGraphId', graphId);
-      this.graphManager.storageManager.setItem('aiCanvas_graph', JSON.stringify(graphData));
-      
-      // Clear the modified flag
-      this.graphManager.clearModifiedFlag();
-      
-      // Publish graph saved event
-      this.graphManager.eventBus.publish('graph:saved', { 
-        id: graphId, 
-        name, 
-        description,
-        isNew: forceNew || !this.graphManager.getCurrentGraphId(),
-        partialSuccess: failedNodes > 0 || failedEdges > 0
+        }
       });
       
-      return { 
-        id: graphId, 
-        name, 
-        description,
-        partialSuccess: failedNodes > 0 || failedEdges > 0
-      };
-    } catch (error) {
-      // Save to localStorage as fallback
-      const graphData = this.graphManager.exportGraph();
-      this.graphManager.storageManager.setItem('aiCanvas_graph', JSON.stringify(graphData));
-      console.error('Error saving graph, saved to local storage instead:', error);
+      // Nodes in server but not in client should be deleted
+      serverGraph.nodes.forEach(node => {
+        if (!clientNodeIds.has(node.id)) {
+          updates.nodesToDelete.push(node.id);
+        }
+      });
       
-      // Re-throw the error after saving to localStorage
-      throw error;
+      // Same logic for edges
+      const serverEdgeIds = new Set(serverGraph.edges.map(e => e.id));
+      const clientEdgeIds = new Set(clientGraph.edges.map(e => e.id));
+      
+      clientGraph.edges.forEach(edge => {
+        if (!serverEdgeIds.has(edge.id)) {
+          updates.edgesToCreate.push(edge);
+        }
+      });
+      
+      serverGraph.edges.forEach(edge => {
+        if (!clientEdgeIds.has(edge.id)) {
+          updates.edgesToDelete.push(edge.id);
+        }
+      });
+      
+      return updates;
+  }
+  
+  /**
+   * Execute differential updates in correct order
+   * 
+   * @param {string} graphId - Graph ID
+   * @param {Object} updates - Updates to execute
+   */
+  async executeUpdates(graphId, updates) {
+      const errors = [];
+      
+      // Delete edges first (to avoid foreign key violations)
+      for (const edgeId of updates.edgesToDelete) {
+        try {
+          await this.apiClient.delete(`/api/edges/${edgeId}`);
+        } catch (error) {
+          // Don't fail on 404s (edge already deleted)
+          if (error.response?.status !== 404) {
+            errors.push(`Failed to delete edge ${edgeId}: ${error.message}`);
+          }
+        }
+      }
+      
+      // Delete nodes that should be removed
+      for (const nodeId of updates.nodesToDelete) {
+        try {
+          await this.apiClient.delete(`/api/nodes/${nodeId}`);
+        } catch (error) {
+          if (error.response?.status !== 404) {
+            errors.push(`Failed to delete node ${nodeId}: ${error.message}`);
+          }
+        }
+      }
+      
+      // Create/update nodes
+      for (const node of updates.nodesToCreate) {
+        try {
+          await this.apiClient.post(`/api/graphs/${graphId}/nodes`, node);
+        } catch (error) {
+          errors.push(`Failed to create node ${node.id}: ${error.message}`);
+        }
+      }
+      
+      // Update existing nodes
+      for (const node of updates.nodesToUpdate) {
+        try {
+          await this.apiClient.put(`/api/nodes/${node.id}`, node);
+        } catch (error) {
+          errors.push(`Failed to update node ${node.id}: ${error.message}`);
+        }
+      }
+      
+      // Create edges (after all nodes exist)
+      for (const edge of updates.edgesToCreate) {
+        try {
+          await this.apiClient.post('/api/edges', edge);
+        } catch (error) {
+          errors.push(`Failed to create edge ${edge.id}: ${error.message}`);
+        }
+      }
+      
+      // If we have errors, log them but don't stop the process
+      if (errors.length > 0) {
+        console.warn(`${errors.length} errors during graph update:`, errors);
+      }
+      
+      return errors.length === 0;
+  }
+  
+  /**
+   * Clear existing graph data before update
+   * 
+   * @param {string} graphId - Graph ID
+   * @returns {Promise<void>}
+   */
+  async clearGraphData(graphId) {
+    try {
+      // Load the current graph from the server to get node IDs
+      const response = await this.graphManager.apiClient.get(`/api/graphs/${graphId}`);
+      
+      if (response.status !== 'success' || !response.data) {
+        throw new Error('Failed to load graph data for cleaning');
+      }
+      
+      // Delete all edges with improved error handling
+      const deleteEdgePromises = response.data.edges.map(edge => {
+        return this.graphManager.apiClient.delete(`/api/edges/${edge.id}`)
+          .catch(err => {
+            // Log but don't fail the operation if edge deletion fails
+            console.warn(`Non-critical error deleting edge ${edge.id}:`, err);
+            // Return a success result to avoid breaking the Promise.all
+            return { status: 'success', message: 'Edge deletion skipped' };
+          });
+      });
+      
+      await Promise.all(deleteEdgePromises);
+      
+      // Delete all nodes
+      const deleteNodePromises = response.data.nodes.map(node => {
+        return this.graphManager.apiClient.delete(`/api/nodes/${node.id}`)
+          .catch(err => {
+            console.error(`Error deleting node ${node.id}:`, err);
+            // Return null but don't reject the whole operation
+            return null;
+          });
+      });
+      
+      await Promise.all(deleteNodePromises);
+    } catch (error) {
+      console.error('Error clearing graph data:', error);
+      // Continue with save operation even if cleaning fails
     }
   }
     
-    /**
-     * Clear existing graph data before update
-     * 
-     * @param {string} graphId - Graph ID
-     * @returns {Promise<void>}
-     */
-    async clearGraphData(graphId) {
-      try {
-        // Load the current graph from the server to get node IDs
-        const response = await this.graphManager.apiClient.get(`/graphs/${graphId}`);
-        
-        if (response.status !== 'success' || !response.data) {
-          throw new Error('Failed to load graph data for cleaning');
-        }
-        
-        // Delete all edges
-        const deleteEdgePromises = response.data.edges.map(edge => {
-          return this.graphManager.apiClient.delete(`/edges/${edge.id}`);
-        });
-        
-        await Promise.all(deleteEdgePromises);
-        
-        // Delete all nodes
-        const deleteNodePromises = response.data.nodes.map(node => {
-          return this.graphManager.apiClient.delete(`/nodes/${node.id}`);
-        });
-        
-        await Promise.all(deleteNodePromises);
-      } catch (error) {
-        console.error('Error clearing graph data:', error);
-        // Continue with save operation even if cleaning fails
-      }
-    }
-    
-    /**
-     * Load a graph by ID from the server
-     * 
-     * @param {string} graphId - ID of the graph to load
-     * @returns {Promise<Object>} Loaded graph data
-     */
-    async loadGraphById(graphId) {
+  /**
+   * Load a graph by ID from the server
+   * 
+   * @param {string} graphId - ID of the graph to load
+   * @returns {Promise<Object>} Loaded graph data
+   */
+  async loadGraphById(graphId) {
       // Check for unsaved changes before loading
       if (this.graphManager.hasUnsavedChanges()) {
         // This would be handled by the UI, but we'll
@@ -195,7 +270,7 @@ async saveGraph(name, description = '', forceNew = false) {
       }
       
       // Get the graph from the server
-      const response = await this.graphManager.apiClient.get(`/graphs/${graphId}`);
+      const response = await this.graphManager.apiClient.get(`/api/graphs/${graphId}`);
       
       if (response.status === 'success' && response.data) {
         const graphData = response.data;
@@ -217,9 +292,17 @@ async saveGraph(name, description = '', forceNew = false) {
           this.graphManager.nodeManager.addNode(nodeWithGraphId);
         });
         
-        // Import edges
+        // Import edges with proper source and target handling
         graphData.edges.forEach(edge => {
-          this.graphManager.edgeManager.addEdge(edge.source, edge.target);
+          // Make sure we use the correct properties based on the API response
+          const sourceId = edge.source || edge.source_node_id;
+          const targetId = edge.target || edge.target_node_id;
+          
+          if (sourceId && targetId) {
+            this.graphManager.edgeManager.addEdge(sourceId, targetId);
+          } else {
+            console.warn('Edge has invalid source or target:', edge);
+          }
         });
         
         // Apply layout if available
@@ -240,101 +323,137 @@ async saveGraph(name, description = '', forceNew = false) {
       } else {
         throw new Error(response.message || 'Failed to load graph');
       }
-    }
+  }
     
-    /**
-     * Get all available graphs from the server
-     * 
-     * @returns {Promise<Array>} Array of graph metadata
-     */
-    async getAvailableGraphs() {
-      const response = await this.graphManager.apiClient.get('/graphs');
-      
-      if (response.status === 'success' && Array.isArray(response.data)) {
-        return response.data;
-      } else {
-        throw new Error(response.message || 'Failed to get available graphs');
-      }
-    }
+  /**
+   * Get all available graphs from the server
+   * 
+   * @returns {Promise<Array>} Array of graph metadata
+   */
+  async getAvailableGraphs() {
+    const response = await this.graphManager.apiClient.get('/api/graphs');
     
-    /**
-     * Delete a graph from the server
-     * 
-     * @param {string} graphId - ID of the graph to delete
-     * @returns {Promise<boolean>} Success
-     */
-    async deleteGraph(graphId) {
-      const response = await this.graphManager.apiClient.delete(`/graphs/${graphId}`);
-      
-      if (response.status === 'success') {
-        // If the deleted graph was the current one, clear it
-        if (this.graphManager.getCurrentGraphId() === graphId) {
-          this.graphManager.clearGraph();
-        }
-        
-        // If the deleted graph was the last loaded one, remove from localStorage
-        if (this.graphManager.storageManager.getItem('aiCanvas_lastGraphId') === graphId) {
-          this.graphManager.storageManager.removeItem('aiCanvas_lastGraphId');
-        }
-        
-        // Publish graph deleted event
-        this.graphManager.eventBus.publish('graph:deleted', { id: graphId });
-        
-        return true;
-      } else {
-        throw new Error(response.message || 'Failed to delete graph');
-      }
+    if (response.status === 'success' && Array.isArray(response.data)) {
+      return response.data;
+    } else {
+      throw new Error(response.message || 'Failed to get available graphs');
     }
+  }
     
-    /**
-     * Reset the database (admin function)
-     * 
-     * @returns {Promise<boolean>} Success
-     */
-    async resetDatabase() {
-      const response = await this.graphManager.apiClient.post('/reset-database');
-      
-      if (response.status === 'success') {
-        // Clear local graph
+  /**
+   * Delete a graph from the server
+   * 
+   * @param {string} graphId - ID of the graph to delete
+   * @returns {Promise<boolean>} Success
+   */
+  async deleteGraph(graphId) {
+    const response = await this.graphManager.apiClient.delete(`/api/graphs/${graphId}`);
+    
+    if (response.status === 'success') {
+      // If the deleted graph was the current one, clear it
+      if (this.graphManager.getCurrentGraphId() === graphId) {
         this.graphManager.clearGraph();
-        
-        // Clear localStorage
+      }
+      
+      // If the deleted graph was the last loaded one, remove from localStorage
+      if (this.graphManager.storageManager.getItem('aiCanvas_lastGraphId') === graphId) {
         this.graphManager.storageManager.removeItem('aiCanvas_lastGraphId');
-        this.graphManager.storageManager.removeItem('aiCanvas_graph');
-        
-        // Publish database reset event
-        this.graphManager.eventBus.publish('database:reset');
-        
-        return true;
-      } else {
-        throw new Error(response.message || 'Failed to reset database');
       }
+      
+      // Publish graph deleted event
+      this.graphManager.eventBus.publish('graph:deleted', { id: graphId });
+      
+      return true;
+    } else {
+      throw new Error(response.message || 'Failed to delete graph');
     }
+  }
     
-    /**
-     * Export graph to JSON
-     * 
-     * @returns {string} JSON string of graph data
-     */
-    exportToJson() {
-      const graphData = this.graphManager.exportGraph();
-      return JSON.stringify(graphData, null, 2);
+  /**
+   * Reset the database (admin function)
+   * 
+   * @returns {Promise<boolean>} Success
+   */
+  async resetDatabase() {
+    const response = await this.graphManager.apiClient.post('/api/reset-database');
+    
+    if (response.status === 'success') {
+      // Clear local graph
+      this.graphManager.clearGraph();
+      
+      // Clear localStorage
+      this.graphManager.storageManager.removeItem('aiCanvas_lastGraphId');
+      this.graphManager.storageManager.removeItem('aiCanvas_graph');
+      
+      // Publish database reset event
+      this.graphManager.eventBus.publish('database:reset');
+      
+      return true;
+    } else {
+      throw new Error(response.message || 'Failed to reset database');
     }
+  }
     
-    /**
-     * Import graph from JSON
-     * 
-     * @param {string} jsonString - JSON string of graph data
-     * @returns {boolean} Success
-     */
-    importFromJson(jsonString) {
-      try {
-        const graphData = JSON.parse(jsonString);
-        this.graphManager.importGraph(graphData);
-        return true;
-      } catch (error) {
-        console.error('Error importing graph from JSON:', error);
-        return false;
+  /**
+   * Export graph to JSON
+   * 
+   * @returns {string} JSON string of graph data
+   */
+  exportToJson() {
+    const graphData = this.graphManager.exportGraph();
+    return JSON.stringify(graphData, null, 2);
+  }
+    
+  /**
+   * Import graph from JSON
+   * 
+   * @param {string} jsonString - JSON string of graph data
+   * @returns {boolean} Success
+   */
+  importFromJson(jsonString) {
+    try {
+      const graphData = JSON.parse(jsonString);
+      this.graphManager.importGraph(graphData);
+      return true;
+    } catch (error) {
+      console.error('Error importing graph from JSON:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Save edges in batch for better performance
+   * 
+   * @param {Array} edges - Array of edge data objects
+   * @returns {Promise<Array>} Results of edge creation
+   */
+  async saveEdgesBatch(edges) {
+    try {
+      const edgePromises = [];
+      
+      for (const edge of edges) {
+        // Format edge data properly for the API
+        const edgeData = {
+          source: edge.source,
+          target: edge.target,
+          type: edge.type || 'provides_context'
+        };
+        
+        const edgePromise = this.graphManager.apiClient.post('/api/edges', edgeData)
+          .catch(err => {
+            console.error(`Error saving edge ${edge.source}->${edge.target}:`, err);
+            // Return null but don't reject the whole operation
+            return null;
+          });
+        
+        edgePromises.push(edgePromise);
       }
+      
+      const results = await Promise.all(edgePromises);
+      return results.filter(r => r !== null);
+    } catch (error) {
+      console.error('Error saving edges in batch:', error);
+      return [];
     }
+  }
 }

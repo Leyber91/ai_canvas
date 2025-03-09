@@ -224,17 +224,61 @@ export class GraphManager {
       this.eventBus.publish('graph:cleared');
     }
     
-    /**
-     * Save the current graph to the server
-     * 
-     * @param {string} name - Name of the graph
-     * @param {string} description - Description of the graph
-     * @param {boolean} forceNew - Whether to create a new graph even if current graph exists
-     * @returns {Promise<Object>} Saved graph data
-     */
-    async saveGraph(name, description = '', forceNew = false) {
-      return this.graphStorage.saveGraph(name, description, forceNew);
+/**
+ * Save the current graph with improved error handling
+ * 
+ * @param {string} name - Graph name
+ * @param {string} description - Graph description
+ * @param {boolean} forceNew - Force save as new graph
+ * @returns {Promise<Object>} Saved graph data
+ */
+async saveGraph(name, description, forceNew = false) {
+    try {
+      // First try to save to server
+      const result = await this.graphStorage.saveGraph(name, description, forceNew);
+      
+      // If successful, update local state
+      this.setCurrentGraph(result.id, result.name);
+      this.clearModifiedFlag();
+      
+      // Also save backup to localStorage
+      const graphData = this.exportGraph();
+      this.storageManager.setItem('aiCanvas_graph', JSON.stringify(graphData));
+      this.storageManager.setItem('aiCanvas_lastGraphId', result.id);
+      
+      // Publish success event with partial success flag if there were non-critical errors
+      const partialSuccess = result.hasOwnProperty('partialSuccess') ? result.partialSuccess : false;
+      this.eventBus.publish('graph:saved', {
+        id: result.id,
+        name: result.name,
+        description: result.description,
+        isNew: result.isNew,
+        partialSuccess
+      });
+      
+      return result;
+    } catch (error) {
+      // Handle save failure
+      console.error('Failed to save graph:', error);
+      
+      // Try to save backup to localStorage even if server save failed
+      try {
+        const graphData = this.exportGraph();
+        this.storageManager.setItem('aiCanvas_graph_backup', JSON.stringify(graphData));
+        this.storageManager.setItem('aiCanvas_lastSaveAttemptTime', Date.now());
+      } catch (localStorageError) {
+        console.error('Could not save backup to localStorage:', localStorageError);
+      }
+      
+      // Publish error event
+      this.eventBus.publish('graph:save-failed', {
+        error: error.message,
+        originalError: error
+      });
+      
+      throw error;
     }
+  }
     
     /**
      * Load a graph by ID from the server

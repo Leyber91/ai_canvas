@@ -233,6 +233,12 @@ class EdgeRepository(BaseRepository):
         # Get all edges where the source is in these nodes
         return Edge.query.filter(Edge.source_node_id.in_(node_ids)).all()
 
+    def get_edges_for_nodes(self, node_ids: List[str]) -> List[Edge]:
+        """Get all edges where source or target is in the given node IDs."""
+        return Edge.query.filter(
+            (Edge.source_node_id.in_(node_ids)) | (Edge.target_node_id.in_(node_ids))
+        ).all()
+
 class ConversationRepository(BaseRepository):
     """Repository for Conversation operations."""
     

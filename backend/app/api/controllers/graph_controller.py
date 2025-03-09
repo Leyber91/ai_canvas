@@ -116,3 +116,26 @@ def delete_graph(graph_id):
             'status': 'error',
             'message': 'Failed to delete graph: ' + str(e)
         }), 500
+
+
+@graph_bp.route('/<int:graph_id>/batch', methods=['POST'])
+def update_graph_batch(graph_id):
+    """Update a graph with a batch of operations."""
+    try:
+        operations = request.json
+        result = graph_service.update_graph_batch(graph_id, operations)
+        return jsonify({
+            'status': 'success',
+            'data': result
+        })
+    except ResourceNotFoundError as e:
+        return jsonify(e.to_dict()), e.status_code
+    except ValidationError as e:
+        return jsonify(e.to_dict()), e.status_code
+    except AppException as e:
+        return jsonify(e.to_dict()), e.status_code
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to perform batch update: ' + str(e)
+        }), 500
