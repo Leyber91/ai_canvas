@@ -52,13 +52,22 @@ export class ExecutionEngine {
       throw new Error(validation.errors.join('. '));
     }
     
-    // If there are other errors besides cycles, fail execution
-    const nonCycleErrors = validation.errors.filter(err => !err.includes('cycles'));
+    // If there are other errors besides cycles and warnings, fail execution
+    const nonCycleErrors = validation.errors.filter(err => 
+      !err.includes('cycles') && !err.startsWith('Warning:')
+    );
     if (nonCycleErrors.length > 0) {
       executionState.isExecuting = false;
       throw new Error(nonCycleErrors.join('. '));
     }
-    
+
+    // Log warnings but don't fail execution
+    const warnings = validation.errors.filter(err => err.startsWith('Warning:'));
+    if (warnings.length > 0) {
+      console.warn('Workflow execution warnings:', warnings.join('. '));
+      // Optionally publish warnings event
+      eventBus.publish('workflow:warnings', { warnings });
+    }
     try {
       // Set a timeout for the overall execution
       this.startExecutionTimeout();
