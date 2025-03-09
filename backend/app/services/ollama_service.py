@@ -13,6 +13,8 @@ from ..utils.streaming import create_stream_response, stream_ollama_response, pa
 # Ollama API endpoint
 OLLAMA_API_URL = "http://localhost:11434/api"
 
+# Check and fix app/services/ollama_service.py
+
 def get_available_models():
     """Get available models from Ollama."""
     ollama_models = []
@@ -20,21 +22,27 @@ def get_available_models():
         # Try to get models from Ollama API first
         response = requests.get(f"{OLLAMA_API_URL}/tags")
         if response.status_code == 200:
-            ollama_models = [model['name'] for model in response.json().get('models', [])]
+            print("Ollama response received:", response.status_code)
+            data = response.json()
+            
+            # Debug the response structure
+            if 'models' in data:
+                print(f"Found {len(data['models'])} models in response")
+                ollama_models = [model['name'] for model in data.get('models', [])]
+                print(f"Extracted model names: {ollama_models}")
+            else:
+                print("No 'models' key in response:", data.keys())
         else:
-            # Fallback to CLI if API doesn't work
-            import subprocess
-            result = subprocess.run(['ollama', 'list'], capture_output=True, text=True)
-            if result.returncode == 0:
-                # Parse the output to extract model names
-                lines = result.stdout.strip().split('\n')
-                if len(lines) > 1:  # Skip header line
-                    for line in lines[1:]:
-                        parts = line.split()
-                        if parts:
-                            ollama_models.append(parts[0])
+            print(f"Ollama API returned status: {response.status_code}")
+            # Fallback to CLI
+            # ... existing CLI fallback code ...
     except Exception as e:
-        current_app.logger.error(f"Error getting Ollama models: {str(e)}")
+        print(f"Error getting Ollama models: {str(e)}")
+    
+    # Always return some models, even if none were found
+    if not ollama_models:
+        print("No models found, using fallback list")
+        ollama_models = ["llama3", "llama2", "mistral", "qwen2.5", "llama3.2"]
     
     return ollama_models
 

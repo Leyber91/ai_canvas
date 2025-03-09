@@ -1,25 +1,1053 @@
-/**
- * AI Canvas - Main CSS file
- * This file imports all modular CSS components
- */
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-/* Import base styles */
-@import url('./modules/base.css');
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: #333;
+    background-color: #f5f5f5;
+}
 
-/* Import layout styles */
-@import url('./modules/layout.css');
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-width: 100%;
+    margin: 0 auto;
+}
 
-/* Import component styles */
-@import url('./modules/components.css');
+/* Header styles */
+header {
+    background-color: #2c3e50;
+    color: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 
-/* Import graph styles */
-@import url('./modules/graph.css');
+header h1 {
+    font-size: 1.5rem;
+}
 
-/* Import modal styles */
-@import url('./modules/modal.css');
+.controls {
+    display: flex;
+    gap: 0.5rem;
+}
 
-/* Import connection styles */
-@import url('./modules/connections.css');
+button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
 
-/* Import dark mode styles (applied conditionally) */
-@import url('./modules/dark-mode.css');
+button:hover {
+    background-color: #2980b9;
+}
+
+button:disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
+}
+
+/* Main content layout */
+main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.canvas-container {
+    flex: 1;
+    background-color: white;
+    border-right: 1px solid #ddd;
+}
+
+#cy {
+    width: 100%;
+    height: 100%;
+}
+
+.conversation-panel {
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    background-color: #ecf0f1;
+}
+
+/* Node info section */
+.node-info {
+    padding: 1rem;
+    border-bottom: 1px solid #ddd;
+    background-color: #f8f9fa;
+}
+
+.node-info h2 {
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+}
+
+#node-details {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+/* Node operations */
+.node-operations {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
+}
+
+.node-op-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.node-op-btn:hover {
+    background-color: #2980b9;
+}
+
+.node-op-btn.active-operation {
+    background-color: #e74c3c;
+}
+
+.floating-edge-btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: background-color 0.2s;
+}
+
+.floating-edge-btn:hover {
+    background-color: #c0392b;
+}
+
+/* Model limits info */
+.model-limits-info {
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.8rem;
+    background-color: #f1f8ff;
+    border: 1px solid #d1e5f9;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.model-limits-info h4 {
+    margin-bottom: 0.5rem;
+    color: #2980b9;
+}
+
+.limits-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.3rem 0.8rem;
+}
+
+.limits-grid > div:nth-child(odd) {
+    font-weight: 500;
+}
+
+/* Chat section */
+.chat-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+#chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.message {
+    padding: 0.75rem;
+    border-radius: 8px;
+    max-width: 80%;
+}
+
+.user-message {
+    background-color: #3498db;
+    color: white;
+    align-self: flex-end;
+}
+
+.assistant-message {
+    background-color: #e9e9e9;
+    color: #333;
+    align-self: flex-start;
+}
+
+.chat-input-container {
+    display: flex;
+    padding: 1rem;
+    background-color: white;
+    border-top: 1px solid #ddd;
+}
+
+#chat-input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: none;
+    height: 60px;
+    font-family: inherit;
+}
+
+#send-btn {
+    margin-left: 0.5rem;
+    align-self: flex-end;
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 500px;
+    max-width: 90%;
+}
+
+.close {
+    float: right;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: inherit;
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+/* Cytoscape node styles */
+.node {
+    background-color: #3498db;
+    color: white;
+    text-align: center;
+    padding: 10px;
+    border-radius: 5px;
+}
+
+.ollama-node {
+    background-color: #3498db;
+}
+
+.groq-node {
+    background-color: #9b59b6;
+}
+
+/* Loading indicator */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #fff;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Typing indicator */
+.typing-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+}
+
+.typing-indicator span {
+    height: 8px;
+    width: 8px;
+    float: left;
+    margin: 0 1px;
+    background-color: #9E9EA1;
+    display: block;
+    border-radius: 50%;
+    opacity: 0.4;
+}
+
+.typing-indicator span:nth-of-type(1) {
+    animation: typing 1s infinite;
+}
+
+.typing-indicator span:nth-of-type(2) {
+    animation: typing 1s 0.33s infinite;
+}
+
+.typing-indicator span:nth-of-type(3) {
+    animation: typing 1s 0.66s infinite;
+}
+
+@keyframes typing {
+    0% {
+        transform: translateY(0px);
+        opacity: 0.4;
+    }
+    50% {
+        transform: translateY(-5px);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(0px);
+        opacity: 0.4;
+    }
+}
+
+/* Execute workflow button */
+.workflow-controls {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-top: 1px solid #ddd;
+}
+
+.execute-btn {
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.execute-btn:hover {
+    background-color: #219653;
+}
+
+.execute-btn:disabled {
+    background-color: #95a5a6;
+}
+
+
+/* Workflow Panel Styles */
+.workflow-panel {
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 15px;
+    margin-top: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  }
+  
+  .workflow-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #e9ecef;
+    padding-bottom: 10px;
+  }
+  
+  .workflow-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #2c3e50;
+  }
+  
+  .toggle-details-btn {
+    background-color: transparent;
+    border: 1px solid #ccc;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    color: #6c757d;
+    border-radius: 4px;
+  }
+  
+  .toggle-details-btn:hover {
+    background-color: #e9ecef;
+  }
+  
+  .cycle-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+  }
+  
+  .cycle-options {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  
+  .cycle-options label {
+    margin: 0;
+    font-weight: 500;
+  }
+  
+  .cycle-options select {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+    flex-grow: 1;
+    font-size: 0.9rem;
+  }
+  
+  .execution-controls {
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .execute-btn, .cancel-btn {
+    padding: 8px 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    width: 100%;
+    max-width: 300px;
+  }
+  
+  .execute-btn {
+    background-color: #27ae60;
+    color: white;
+  }
+  
+  .execute-btn:hover {
+    background-color: #219653;
+  }
+  
+  .execute-btn:disabled {
+    background-color: #a1cdba;
+    cursor: not-allowed;
+  }
+  
+  .cancel-btn {
+    background-color: #e74c3c;
+    color: white;
+  }
+  
+  .cancel-btn:hover {
+    background-color: #c0392b;
+  }
+  
+  .execution-progress {
+    margin-bottom: 15px;
+  }
+  
+  .progress-bar {
+    height: 10px;
+    background-color: #e9ecef;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 5px;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background-color: #3498db;
+    border-radius: 5px;
+    transition: width 0.3s ease;
+  }
+  
+  .progress-text {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #6c757d;
+  }
+  
+  .execution-details {
+    background-color: white;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 15px;
+  }
+  
+  .execution-details h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1rem;
+    color: #2c3e50;
+  }
+  
+  .execution-order-list {
+    margin: 0;
+    padding-left: 20px;
+    margin-bottom: 15px;
+  }
+  
+  .execution-node {
+    padding: 5px 0;
+    position: relative;
+  }
+  
+  .execution-node.pending {
+    color: #6c757d;
+  }
+  
+  .execution-node.executing {
+    color: #3498db;
+    font-weight: bold;
+  }
+  
+  .execution-node.completed {
+    color: #27ae60;
+  }
+  
+  .execution-node.error {
+    color: #e74c3c;
+  }
+  
+  .execution-stats {
+    display: flex;
+    justify-content: space-between;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #6c757d;
+  }
+  
+  /* Node Visualization Styles for Workflow States */
+  .node.executing {
+    border: 3px solid #3498db;
+    box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+  }
+  
+  .node.completed {
+    border: 3px solid #27ae60;
+  }
+  
+  .node.error {
+    border: 3px solid #e74c3c;
+  }
+  
+  .edge.executing {
+    line-color: #3498db !important;
+    target-arrow-color: #3498db !important;
+    width: 3px !important;
+  }
+  
+  .edge.completed {
+    line-color: #27ae60 !important;
+    target-arrow-color: #27ae60 !important;
+    width: 3px !important;
+  }
+  
+  .edge.error {
+    line-color: #e74c3c !important;
+    target-arrow-color: #e74c3c !important;
+    width: 3px !important;
+  }
+  
+  /* Animation for executing nodes */
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(52, 152, 219, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); }
+  }
+  
+  .node.executing {
+    animation: pulse 1.5s infinite;
+  }
+
+
+/* Workflow Panel Styles */
+.workflow-panel {
+    padding: 15px;
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-bottom: 15px;
+  }
+  
+  .panel-title {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 1.2rem;
+  }
+  
+  /* Status indicator */
+  .workflow-status {
+    margin-bottom: 15px;
+  }
+  
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 4px;
+    background-color: #f5f5f5;
+  }
+  
+  .status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+  }
+  
+  .status-indicator.waiting .status-dot {
+    background-color: #95a5a6;
+  }
+  
+  .status-indicator.executing .status-dot {
+    background-color: #3498db;
+    animation: pulse 1.5s infinite;
+  }
+  
+  .status-indicator.success .status-dot {
+    background-color: #2ecc71;
+  }
+  
+  .status-indicator.error .status-dot {
+    background-color: #e74c3c;
+  }
+  
+  @keyframes pulse {
+    0% {
+      transform: scale(0.8);
+      opacity: 0.8;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(0.8);
+      opacity: 0.8;
+    }
+  }
+  
+  /* Progress bar */
+  .execution-progress {
+    margin-bottom: 15px;
+  }
+  
+  .progress-bar {
+    height: 8px;
+    background-color: #ecf0f1;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 5px;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background-color: #3498db;
+    width: 0;
+    transition: width 0.3s ease;
+  }
+  
+  .progress-text {
+    text-align: right;
+    font-size: 0.8rem;
+    color: #7f8c8d;
+  }
+  
+  /* Execution steps */
+  .execution-steps {
+    margin-bottom: 15px;
+  }
+  
+  .steps-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    background-color: white;
+  }
+  
+  .steps-list {
+    padding-left: 20px;
+    margin: 0;
+  }
+  
+  .step-item {
+    margin-bottom: 8px;
+    padding: 8px;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    display: flex;
+    align-items: center;
+  }
+  
+  .step-number {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #3498db;
+    color: white;
+    border-radius: 50%;
+    margin-right: 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+  }
+  
+  .step-name {
+    flex: 1;
+    font-weight: 500;
+  }
+  
+  .step-model {
+    font-size: 0.8rem;
+    color: #7f8c8d;
+    margin: 0 10px;
+  }
+  
+  .step-status {
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+  
+  .step-status.pending {
+    background-color: #f5f5f5;
+    color: #7f8c8d;
+  }
+  
+  .step-status.executing {
+    background-color: #3498db;
+    color: white;
+  }
+  
+  .step-status.success {
+    background-color: #2ecc71;
+    color: white;
+  }
+  
+  .step-status.error {
+    background-color: #e74c3c;
+    color: white;
+  }
+  
+  /* Execution results */
+  .execution-results {
+    margin-bottom: 15px;
+  }
+  
+  .results-container {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    background-color: white;
+  }
+  
+  .result-item {
+    margin-bottom: 15px;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    border-left: 4px solid #3498db;
+  }
+  
+  .result-item.error {
+    border-left-color: #e74c3c;
+  }
+  
+  .result-item h5 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #333;
+  }
+  
+  .result-content {
+    background-color: #f5f5f5;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 0;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+  }
+  
+  .show-full-result-btn {
+    margin-top: 10px;
+    background-color: transparent;
+    border: 1px solid #3498db;
+    color: #3498db;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+  }
+  
+  .show-full-result-btn:hover {
+    background-color: #3498db;
+    color: white;
+  }
+  
+  /* Workflow controls */
+  .workflow-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+  
+  .execute-btn {
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  
+  .execute-btn:hover {
+    background-color: #219653;
+  }
+  
+  .stop-btn {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  
+  .stop-btn:hover {
+    background-color: #c0392b;
+  }
+  
+  .stop-btn:disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
+  }
+  
+  .validate-btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  
+  .validate-btn:hover {
+    background-color: #2980b9;
+  }
+  
+  /* Error display */
+  .workflow-errors {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 4px;
+    background-color: #fdedec;
+    border: 1px solid #e74c3c;
+  }
+  
+  .workflow-errors.hidden {
+    display: none;
+  }
+  
+  .error-message {
+    color: #c0392b;
+    font-weight: 500;
+  }
+  
+  .error-item {
+    margin-bottom: 5px;
+    color: #c0392b;
+  }
+  
+  .cycles-warning {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #fff9e6;
+    border-radius: 4px;
+    border: 1px solid #f1c40f;
+  }
+  
+  .cycles-warning h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #f39c12;
+  }
+  
+  .cycles-warning p {
+    margin-top: 0;
+    margin-bottom: 10px;
+  }
+  
+  .highlight-cycles-btn, .break-cycles-btn {
+    background-color: #f39c12;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 10px;
+    font-size: 0.8rem;
+  }
+  
+  .highlight-cycles-btn:hover, .break-cycles-btn:hover {
+    background-color: #e67e22;
+  }
+  
+  /* Result modal */
+  .result-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  .modal-content {
+    background-color: white;
+    width: 80%;
+    max-width: 800px;
+    max-height: 80vh;
+    border-radius: 5px;
+    padding: 20px;
+    position: relative;
+    overflow: auto;
+  }
+  
+  .close-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #7f8c8d;
+  }
+  
+  .close-btn:hover {
+    color: #2c3e50;
+  }
+  
+  .full-result {
+    max-height: 60vh;
+    overflow-y: auto;
+    background-color: #f5f5f5;
+    padding: 15px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+  }
+  
+  /* Loading indicator */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: #7f8c8d;
+  }
+  
+  .loading:after {
+    content: "";
+    width: 20px;
+    height: 20px;
+    border: 3px solid #3498db;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  /* Validation messages */
+  .validation-success {
+    padding: 10px;
+    background-color: #d5f5e3;
+    border-radius: 4px;
+    color: #27ae60;
+    font-weight: 500;
+  }
+  
+  .validation-errors {
+    margin-bottom: 10px;
+  }
+  
+  .empty-plan, .empty-results {
+    padding: 20px;
+    text-align: center;
+    color: #7f8c8d;
+    font-style: italic;
+  }

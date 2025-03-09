@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Canvas Frontend-Backend Connection Demo</title>
+    <style>
+        /* General Styling */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        /* Connection Diagram Styling */
+        .connection-diagram {
+            display: flex;
+            flex-direction: column;
+            margin: 30px 0;
+            position: relative;
+        }
+        
+        .system-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+        }
+        
+        .frontend-container, .backend-container {
+            width: 48%;
+            border: 2px solid #3498db;
+            border-radius: 10px;
+            background-color: #ecf0f1;
+            padding: 15px;
+        }
+        
+        .backend-container {
+            border-color: #2ecc71;
+        }
+        
+        .component {
+            margin: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            position: relative;
+        }
+        
+        .frontend-component {
+            background-color: #d6eaf8;
+            border: 1px solid #3498db;
+        }
+        
+        .backend-component {
+            background-color: #d5f5e3;
+            border: 1px solid #2ecc71;
+        }
+        
+        .connection-point {
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background-color: #e74c3c;
+            position: absolute;
+            display: inline-block;
+        }
+        
+        .left-point {
+            left: -6px;
+            top: 50%;
+        }
+        
+        .right-point {
+            right: -6px;
+            top: 50%;
+        }
+        
+        .connection-line {
+            height: 2px;
+            background-color: #e74c3c;
+            position: absolute;
+        }
+        
+        /* Connection Animation */
+        .data-packet {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #e74c3c;
+            position: absolute;
+            animation-duration: 2s;
+            animation-iteration-count: infinite;
+        }
+        
+        @keyframes moveRight {
+            0% { transform: translateX(0); opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateX(100%); opacity: 0; }
+        }
+        
+        @keyframes moveLeft {
+            0% { transform: translateX(100%); opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateX(0%); opacity: 0; }
+        }
+        
+        /* Interactive Demo Styling */
+        .interactive-demo {
+            display: flex;
+            margin-top: 30px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .demo-column {
+            width: 50%;
+            padding: 15px;
+        }
+        
+        .frontend-demo {
+            background-color: #ebf5fb;
+        }
+        
+        .backend-demo {
+            background-color: #eafaf1;
+            border-left: 1px solid #ccc;
+        }
+        
+        .demo-controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .demo-log {
+            height: 200px;
+            overflow-y: auto;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-radius: 3px;
+        }
+        
+        .log-frontend {
+            background-color: #d6eaf8;
+        }
+        
+        .log-backend {
+            background-color: #d5f5e3;
+        }
+        
+        .log-error {
+            background-color: #fadbd8;
+            color: #c0392b;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button.green-btn {
+            background-color: #2ecc71;
+        }
+        
+        button.green-btn:hover {
+            background-color: #27ae60;
+        }
+        
+        button.orange-btn {
+            background-color: #e67e22;
+        }
+        
+        button.orange-btn:hover {
+            background-color: #d35400;
+        }
+        
+        /* Documentation Styling */
+        .documentation {
+            margin-top: 40px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .code-block {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            font-family: monospace;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>AI Canvas Frontend-Backend Connection Demo</h1>
+        <p>Understanding the integration between frontend modules and backend services</p>
+    </header>
+    
+    <div class="container">
+        <section class="connection-diagram">
+            <h2>System Architecture</h2>
+            
+            <div class="system-row">
+                <div class="frontend-container">
+                    <h3>Frontend (JavaScript)</h3>
+                    
+                    <div class="component frontend-component" id="apiClient">
+                        <h4>APIClient</h4>
+                        <p>Manages HTTP requests to backend</p>
+                        <div class="connection-point right-point" id="apiClient-point"></div>
+                    </div>
+                    
+                    <div class="component frontend-component" id="graphManager">
+                        <h4>GraphManager</h4>
+                        <p>Handles graph visualization and operations</p>
+                        <div class="connection-point right-point" id="graphManager-point"></div>
+                    </div>
+                    
+                    <div class="component frontend-component" id="conversationManager">
+                        <h4>ConversationManager</h4>
+                        <p>Manages chat history and messaging</p>
+                        <div class="connection-point right-point" id="conversationManager-point"></div>
+                    </div>
+                    
+                    <div class="component frontend-component" id="workflowManager">
+                        <h4>WorkflowManager</h4>
+                        <p>Handles workflow execution</p>
+                        <div class="connection-point right-point" id="workflowManager-point"></div>
+                    </div>
+                </div>
+                
+                <div class="backend-container">
+                    <h3>Backend (Python/Flask)</h3>
+                    
+                    <div class="component backend-component" id="apiRoutes">
+                        <h4>API Routes</h4>
+                        <p>RESTful endpoints that receive requests</p>
+                        <div class="connection-point left-point" id="apiRoutes-point"></div>
+                    </div>
+                    
+                    <div class="component backend-component" id="graphService">
+                        <h4>Graph Service</h4>
+                        <p>Manages graph data and operations</p>
+                        <div class="connection-point left-point" id="graphService-point"></div>
+                    </div>
+                    
+                    <div class="component backend-component" id="aiServices">
+                        <h4>Ollama/Groq Services</h4>
+                        <p>Interfaces with AI models</p>
+                        <div class="connection-point left-point" id="aiServices-point"></div>
+                    </div>
+                    
+                    <div class="component backend-component" id="databaseModels">
+                        <h4>SQLAlchemy Models</h4>
+                        <p>Database schema and persistence</p>
+                        <div class="connection-point left-point" id="databaseModels-point"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Connection Lines will be added by JavaScript -->
+        </section>
+        
+        <section class="interactive-demo">
+            <div class="demo-column frontend-demo">
+                <h3>Frontend</h3>
+                <div class="demo-controls">
+                    <h4>Operations</h4>
+                    <button onclick="simulateAddNode()">Add Node</button>
+                    <button onclick="simulateAddEdge()">Add Edge</button>
+                    <button onclick="simulateSendMessage()">Send Message</button>
+                    <button class="orange-btn" onclick="simulateExecuteWorkflow()">Execute Workflow</button>
+                    <button class="green-btn" onclick="simulateSaveGraph()">Save Graph</button>
+                </div>
+                <div class="demo-log" id="frontend-log">
+                    <div class="log-entry">Frontend initialization complete</div>
+                </div>
+            </div>
+            
+            <div class="demo-column backend-demo">
+                <h3>Backend</h3>
+                <div class="demo-controls">
+                    <h4>Server Status</h4>
+                    <button class="green-btn" onclick="toggleBackend(true)" id="start-server">Start Server</button>
+                    <button class="orange-btn" onclick="toggleBackend(false)" id="stop-server" disabled>Stop Server</button>
+                    <button onclick="simulateServerError()">Simulate Error</button>
+                    <button onclick="clearLogs()">Clear Logs</button>
+                </div>
+                <div class="demo-log" id="backend-log">
+                    <div class="log-entry">Backend ready to start</div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="documentation">
+            <h2>Connection Documentation</h2>
+            
+            <h3>API Endpoints</h3>
+            <p>These are the primary integration points between frontend and backend:</p>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Endpoint</th>
+                        <th>Method</th>
+                        <th>Frontend Module</th>
+                        <th>Backend Handler</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>/api/graphs</td>
+                        <td>GET</td>
+                        <td>GraphManager</td>
+                        <td>routes/graph.py → graph_service.py</td>
+                        <td>Get all saved graphs</td>
+                    </tr>
+                    <tr>
+                        <td>/api/graphs</td>
+                        <td>POST</td>
+                        <td>GraphManager</td>
+                        <td>routes/graph.py → graph_service.py</td>
+                        <td>Create a new graph</td>
+                    </tr>
+                    <tr>
+                        <td>/api/graphs/{id}</td>
+                        <td>GET</td>
+                        <td>GraphManager</td>
+                        <td>routes/graph.py → graph_service.py</td>
+                        <td>Get a specific graph by ID</td>
+                    </tr>
+                    <tr>
+                        <td>/api/graphs/{id}/nodes</td>
+                        <td>POST</td>
+                        <td>GraphManager</td>
+                        <td>routes/graph.py → graph_service.py</td>
+                        <td>Add a node to a graph</td>
+                    </tr>
+                    <tr>
+                        <td>/api/edges</td>
+                        <td>POST</td>
+                        <td>GraphManager</td>
+                        <td>routes/graph.py → graph_service.py</td>
+                        <td>Create an edge between nodes</td>
+                    </tr>
+                    <tr>
+                        <td>/api/node/chat</td>
+                        <td>POST</td>
+                        <td>ConversationManager</td>
+                        <td>routes/chat.py → ollama_service.py/groq_service.py</td>
+                        <td>Send message to AI node</td>
+                    </tr>
+                    <tr>
+                        <td>/api/execute</td>
+                        <td>POST</td>
+                        <td>WorkflowManager</td>
+                        <td>routes/execute.py → graph_service.py</td>
+                        <td>Execute workflow in topological order</td>
+                    </tr>
+                    <tr>
+                        <td>/api/models</td>
+                        <td>GET</td>
+                        <td>ModelRegistry</td>
+                        <td>routes/models.py → ollama_service.py/groq_service.py</td>
+                        <td>Get available AI models</td>
+                    </tr>
+                    <tr>
+                        <td>/api/reset-database</td>
+                        <td>POST</td>
+                        <td>UIManager</td>
+                        <td>routes/graph.py → graph_service.py</td>
+                        <td>Reset database (admin function)</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <h3>Request/Response Format Example</h3>
+            
+            <h4>Add Node Request (Frontend → Backend)</h4>
+            <div class="code-block">
+// GraphManager.js to /api/graphs/{graphId}/nodes
+{
+  "id": "node-1628175309112",
+  "name": "Text Generator",
+  "backend": "ollama",
+  "model": "llama3",
+  "systemMessage": "You are a helpful assistant",
+  "temperature": 0.7,
+  "maxTokens": 1024
+}
+            </div>
+            
+            <h4>Add Node Response (Backend → Frontend)</h4>
+            <div class="code-block">
+// /api/graphs/{graphId}/nodes response
+{
+  "status": "success",
+  "data": {
+    "id": "node-1628175309112",
+    "name": "Text Generator",
+    "backend": "ollama",
+    "model": "llama3",
+    "systemMessage": "You are a helpful assistant",
+    "temperature": 0.7,
+    "maxTokens": 1024,
+    "position": {
+      "x": 150.5,
+      "y": 200.75
+    }
+  }
+}
+            </div>
+            
+            <h4>Execute Workflow Request (Frontend → Backend)</h4>
+            <div class="code-block">
+// WorkflowManager.js to /api/execute
+{
+  "graph_id": 42
+}
+            </div>
+            
+            <h4>Execute Workflow Response (Backend → Frontend)</h4>
+            <div class="code-block">
+// /api/execute response
+{
+  "status": "success",
+  "data": {
+    "execution_order": ["node-1", "node-2", "node-3"],
+    "results": {
+      "node-1": "Analysis of input data complete.",
+      "node-2": "Processed analysis to generate key insights.",
+      "node-3": "Final summary: The data shows significant trends in user behavior..."
+    }
+  }
+}
+            </div>
+            
+            <h3>Error Response Format</h3>
+            <div class="code-block">
+// Standard error response format
+{
+  "status": "error",
+  "message": "Detailed error message",
+  "code": 400  // Optional error code
+}
+            </div>
+            
+            <h3>Streaming Response (for Ollama Chat)</h3>
+            <p>The chat endpoint supports streaming for Ollama backend:</p>
+            <div class="code-block">
+// Each chunk is prefixed with "data: "
+data: Hello
+data: , how
+data: can I
+data: help you
+data: today?
+            </div>
+        </section>
+    </div>
+    
+    <script>
+        // Backend server simulation state
+        let backendRunning = false;
+        let connectionLines = [];
+        let dataPackets = [];
+        let packetId = 0;
+        
+        // Initialize the demo
+        document.addEventListener('DOMContentLoaded', function() {
+            createConnectionLines();
+        });
+        
+        // Create the connection lines between frontend and backend components
+        function createConnectionLines() {
+            createConnection('apiClient', 'apiRoutes');
+            createConnection('graphManager', 'graphService');
+            createConnection('conversationManager', 'aiServices');
+            createConnection('workflowManager', 'databaseModels');
+        }
+        
+        // Create a visual connection between two components
+        function createConnection(frontendId, backendId) {
+            const frontendPoint = document.getElementById(`${frontendId}-point`);
+            const backendPoint = document.getElementById(`${backendId}-point`);
+            
+            const frontendRect = frontendPoint.getBoundingClientRect();
+            const backendRect = backendPoint.getBoundingClientRect();
+            
+            const diagramRect = document.querySelector('.connection-diagram').getBoundingClientRect();
+            
+            const line = document.createElement('div');
+            line.className = 'connection-line';
+            
+            // Calculate positions relative to the connection diagram
+            const startX = frontendRect.right - diagramRect.left;
+            const startY = frontendRect.top + frontendRect.height / 2 - diagramRect.top;
+            const endX = backendRect.left - diagramRect.left;
+            const endY = backendRect.top + backendRect.height / 2 - diagramRect.top;
+            
+            // Set line position and width
+            line.style.left = `${startX}px`;
+            line.style.top = `${startY}px`;
+            line.style.width = `${endX - startX}px`;
+            
+            document.querySelector('.connection-diagram').appendChild(line);
+            connectionLines.push({
+                element: line,
+                startId: frontendId,
+                endId: backendId,
+                startX,
+                startY,
+                endX,
+                endY
+            });
+        }
+        
+        // Create an animated data packet moving along a connection
+        function createDataPacket(frontendId, backendId, direction = 'toBackend') {
+            if (!backendRunning && direction === 'toBackend') {
+                logFrontend("Cannot send data - backend server is not running");
+                return;
+            }
+            
+            // Find the connection
+            const connection = connectionLines.find(c => 
+                c.startId === frontendId && c.endId === backendId);
+            
+            if (!connection) return;
+            
+            const packet = document.createElement('div');
+            packet.className = 'data-packet';
+            packet.id = `packet-${packetId++}`;
+            
+            const animationName = direction === 'toBackend' ? 'moveRight' : 'moveLeft';
+            packet.style.animation = `${animationName} 2s linear forwards`;
+            
+            if (direction === 'toBackend') {
+                packet.style.left = `${connection.startX}px`;
+                packet.style.top = `${connection.startY - 5}px`;
+                packet.style.width = `${connection.endX - connection.startX}px`;
+            } else {
+                packet.style.left = `${connection.endX - 10}px`;
+                packet.style.top = `${connection.endY - 5}px`;
+                packet.style.width = `${connection.endX - connection.startX}px`;
+            }
+            
+            document.querySelector('.connection-diagram').appendChild(packet);
+            
+            // Remove the packet after animation completes
+            setTimeout(() => {
+                packet.remove();
+            }, 2100);
+            
+            dataPackets.push(packet);
+        }
+        
+        // Toggle backend server state
+        function toggleBackend(start) {
+            backendRunning = start;
+            document.getElementById('start-server').disabled = start;
+            document.getElementById('stop-server').disabled = !start;
+            
+            if (start) {
+                logBackend("Server started. Listening on http://127.0.0.1:5000");
+                logBackend("Database connected successfully");
+                logBackend("Ollama service initialized");
+                logBackend("Groq service initialized");
+            } else {
+                logBackend("Server stopped");
+            }
+        }
+        
+        // Simulate adding a node
+        function simulateAddNode() {
+            logFrontend("Creating new AI node...");
+            logFrontend("GraphManager: Preparing node data");
+            
+            createDataPacket('graphManager', 'graphService');
+            
+            if (backendRunning) {
+                setTimeout(() => {
+                    logBackend("Received POST request to /api/graphs/42/nodes");
+                    logBackend("graph_service.py: Creating node in database");
+                    logBackend("Node created successfully with ID: node-1628175309112");
+                    
+                    createDataPacket('graphService', 'graphManager', 'toFrontend');
+                    
+                    setTimeout(() => {
+                        logFrontend("Node created successfully");
+                        logFrontend("GraphManager: Adding node to visualization");
+                    }, 2000);
+                }, 1000);
+            }
+        }
+        
+        // Simulate adding an edge
+        function simulateAddEdge() {
+            logFrontend("Creating connection between nodes...");
+            logFrontend("GraphManager: Validating edge won't create cycle");
+            
+            createDataPacket('graphManager', 'graphService');
+            
+            if (backendRunning) {
+                setTimeout(() => {
+                    logBackend("Received POST request to /api/edges");
+                    logBackend("graph_service.py: Checking for cycles");
+                    logBackend("Edge created successfully: node-1 → node-2");
+                    
+                    createDataPacket('graphService', 'graphManager', 'toFrontend');
+                    
+                    setTimeout(() => {
+                        logFrontend("Edge created successfully");
+                        logFrontend("GraphManager: Adding edge to visualization");
+                    }, 2000);
+                }, 1000);
+            }
+        }
+        
+        // Simulate sending a message to an AI node
+        function simulateSendMessage() {
+            logFrontend("Sending message to AI node...");
+            logFrontend("ConversationManager: Preparing message with parent contexts");
+            
+            createDataPacket('conversationManager', 'aiServices');
+            
+            if (backendRunning) {
+                setTimeout(() => {
+                    logBackend("Received POST request to /api/node/chat");
+                    logBackend("Processing message for Ollama model: llama3");
+                    logBackend("Sending request to Ollama API");
+                    logBackend("Response received from Ollama");
+                    
+                    createDataPacket('aiServices', 'conversationManager', 'toFrontend');
+                    
+                    setTimeout(() => {
+                        logFrontend("Message response received");
+                        logFrontend("ConversationManager: Updating chat UI with response");
+                    }, 2000);
+                }, 1500);
+            }
+        }
+        
+        // Simulate executing a workflow
+        function simulateExecuteWorkflow() {
+            logFrontend("Executing workflow...");
+            logFrontend("WorkflowManager: Preparing workflow execution request");
+            
+            createDataPacket('workflowManager', 'databaseModels');
+            
+            if (backendRunning) {
+                setTimeout(() => {
+                    logBackend("Received POST request to /api/execute");
+                    logBackend("execute.py: Checking graph for cycles");
+                    logBackend("Determining topological execution order");
+                    logBackend("Executing nodes in sequence: node-1 → node-2 → node-3");
+                    logBackend("Collecting execution results");
+                    
+                    createDataPacket('databaseModels', 'workflowManager', 'toFrontend');
+                    
+                    setTimeout(() => {
+                        logFrontend("Workflow execution completed");
+                        logFrontend("WorkflowManager: Displaying execution results");
+                    }, 2000);
+                }, 2000);
+            }
+        }
+        
+        // Simulate saving a graph
+        function simulateSaveGraph() {
+            logFrontend("Saving graph...");
+            logFrontend("GraphManager: Exporting graph data");
+            
+            createDataPacket('graphManager', 'graphService');
+            
+            if (backendRunning) {
+                setTimeout(() => {
+                    logBackend("Received POST request to /api/graphs");
+                    logBackend("graph_service.py: Creating graph in database");
+                    logBackend("Saving nodes and edges");
+                    logBackend("Graph saved successfully with ID: 42");
+                    
+                    createDataPacket('graphService', 'graphManager', 'toFrontend');
+                    
+                    setTimeout(() => {
+                        logFrontend("Graph saved successfully with ID: 42");
+                        logFrontend("GraphManager: Updating localStorage with backup");
+                    }, 2000);
+                }, 1000);
+            }
+        }
+        
+        // Simulate a server error
+        function simulateServerError() {
+            if (!backendRunning) {
+                logFrontend("Cannot simulate error - backend server is not running");
+                return;
+            }
+            
+            logBackend("ERROR: Graph contains cycles and cannot be executed sequentially", true);
+            logBackend("Traceback (most recent call last):", true);
+            logBackend("  File \"graph_service.py\", line 245, in execute_workflow", true);
+            logBackend("    if not nx.is_directed_acyclic_graph(G):", true);
+            logBackend("NetworkXUnfeasible: Graph contains cycles", true);
+            
+            setTimeout(() => {
+                logFrontend("Error executing workflow: Graph contains cycles and cannot be executed sequentially", true);
+                logFrontend("WorkflowManager: Highlighting cycles in the graph", true);
+            }, 1000);
+        }
+        
+        // Log a message to the frontend log
+        function logFrontend(message, isError = false) {
+            const log = document.getElementById('frontend-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-frontend${isError ? ' log-error' : ''}`;
+            entry.textContent = message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        // Log a message to the backend log
+        function logBackend(message, isError = false) {
+            const log = document.getElementById('backend-log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-backend${isError ? ' log-error' : ''}`;
+            entry.textContent = message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        // Clear both logs
+        function clearLogs() {
+            document.getElementById('frontend-log').innerHTML = '';
+            document.getElementById('backend-log').innerHTML = '';
+            logFrontend("Logs cleared");
+            logBackend("Logs cleared");
+        }
+    </script>
+</body>
+</html>

@@ -1,3 +1,4 @@
+
 """
 Routes for handling graph operations.
 """
@@ -6,8 +7,9 @@ from flask import request, jsonify, current_app
 from sqlalchemy.exc import SQLAlchemyError
 
 from . import api_bp
-from ..models import db, Conversation, Message, Node
+from ..models import db, Conversation, Message, Node, Graph, Edge
 from ..services import graph_service
+
 
 @api_bp.route('/graphs', methods=['GET'])
 def get_graphs():
@@ -136,6 +138,11 @@ def create_node(graph_id):
                 'message': 'Graph not found'
             }), 404
             
+        # Safely handle position data which might be None
+        position = data.get('position') or {}
+        position_x = position.get('x') if isinstance(position, dict) else None
+        position_y = position.get('y') if isinstance(position, dict) else None
+            
         node = graph_service.create_node(
             graph_id=graph_id,
             node_id=data.get('id'),
@@ -145,8 +152,8 @@ def create_node(graph_id):
             system_message=data.get('systemMessage'),
             temperature=data.get('temperature', 0.7),
             max_tokens=data.get('maxTokens', 1024),
-            position_x=data.get('position', {}).get('x'),
-            position_y=data.get('position', {}).get('y')
+            position_x=position_x,
+            position_y=position_y
         )
         
         return jsonify({
@@ -155,10 +162,12 @@ def create_node(graph_id):
         }), 201
     except SQLAlchemyError as e:
         current_app.logger.error(f"Database error: {str(e)}")
+        db.session.rollback()
         return jsonify({
             'status': 'error',
             'message': 'Failed to create node'
         }), 500
+
 
 @api_bp.route('/nodes/<node_id>', methods=['PUT'])
 def update_node(node_id):
@@ -382,4 +391,37 @@ def add_message(conversation_id):
         return jsonify({
             'status': 'error',
             'message': 'Failed to add message'
+        }), 500
+
+
+@api_bp.route('/reset-database', methods=['POST'])
+def reset_database():
+    """Reset the database by deleting all graphs and related data."""
+    try:
+        # Use a transaction to ensure atomicity
+        with db.session.begin():
+            # Delete all messages first (due to foreign key constraints)
+            Message.query.delete()
+            
+            # Delete all conversations
+            Conversation.query.delete()
+            
+            # Delete all edges
+            Edge.query.delete()
+            
+            # Delete all nodes
+            Node.query.delete()
+            
+            # Delete all graphs
+            Graph.query.delete()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Database has been reset successfully'
+        })
+    except SQLAlchemyError as e:
+        current_app.logger.error(f"Database error during reset: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Failed to reset database: {str(e)}'
         }), 500

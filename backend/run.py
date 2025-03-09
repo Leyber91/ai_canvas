@@ -1,18 +1,30 @@
-from dotenv import load_dotenv
-from app import create_app, socketio
-import os
+"""
+Entry point for the AI Canvas application.
+"""
 
-# Force reload environment variables from .env file
+import os
+from dotenv import load_dotenv
+
+# Force re-read of .env file every time run.py is executed
 load_dotenv(override=True)
 
-# Print the API key to verify it's loaded (first 5 chars only for security)
-groq_api_key = os.getenv('GROQ_API_KEY')
-if groq_api_key:
-    print(f"Loaded GROQ_API_KEY: {groq_api_key[:5]}...")
-else:
-    print("Warning: GROQ_API_KEY not found in environment variables")
+from app import create_app, socketio
 
+# Get the application instance
 app = create_app()
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+    # Get port number from environment variable or default to 5000
+    port = int(os.environ.get('PORT', 5000))
+    
+    # Determine if debug mode should be enabled based on the FLASK_ENV variable
+    debug = os.environ.get('FLASK_ENV', 'development') == 'development'
+    
+    # Run the application with SocketIO
+    socketio.run(
+        app,
+        host='0.0.0.0',  # Allow connections from any device on the network
+        port=port,
+        debug=debug,
+        allow_unsafe_werkzeug=debug  # Only allow unsafe Werkzeug in development
+    )

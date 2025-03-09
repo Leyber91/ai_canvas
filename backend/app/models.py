@@ -1,13 +1,6 @@
-"""
-Database models for the AI Canvas application.
-"""
-
+# app/infrastructure/database/models.py
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy import Text
-
-db = SQLAlchemy()
+from app import db
 
 class Graph(db.Model):
     """Graph model representing a collection of nodes and edges."""
@@ -31,11 +24,7 @@ class Graph(db.Model):
             'description': self.description,
             'creation_date': self.creation_date.isoformat() if self.creation_date else None,
             'last_modified': self.last_modified.isoformat() if self.last_modified else None,
-            'layout_data': self.layout_data,
-            'nodes': [node.to_dict() for node in self.nodes],
-            'edges': [edge.to_dict() for edge in Edge.query.filter(
-                Edge.source_node_id.in_([node.id for node in self.nodes])
-            ).all()]
+            'layout_data': self.layout_data
         }
 
 

@@ -1,820 +1,333 @@
 /**
- * App.js - Main application file
+ * app.js
+ * 
+ * Main entry point for the AI Canvas application.
+ * Bootstraps and coordinates all modules.
  */
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Initialize managers
-    window.graphManager = new GraphManager();
-    window.conversationManager = new ConversationManager();
-    
-    // Available models
-    let availableModels = {
-        ollama: [],
-        groq: []
-    };
-    
-    // Initialize dark mode
-    initDarkMode();
-    
-    // DOM elements
-    const addNodeBtn = document.getElementById('add-node-btn');
-    const saveGraphBtn = document.getElementById('save-graph-btn');
-    const loadGraphBtn = document.getElementById('load-graph-btn');
-    const nodeModal = document.getElementById('node-modal');
-    const nodeForm = document.getElementById('node-form');
-    const closeModalBtn = document.querySelector('.close');
-    const cancelBtn = document.getElementById('cancel-btn');
-    const temperatureInput = document.getElementById('temperature');
-    const temperatureValue = document.getElementById('temperature-value');
-    const backendSelect = document.getElementById('backend-select');
-    const modelSelect = document.getElementById('model-select');
-    
-    // Fetch available models
-    fetchAvailableModels();
-    
-    // Event listeners
-    addNodeBtn.addEventListener('click', showNodeModal);
-    saveGraphBtn.addEventListener('click', saveGraph);
-    loadGraphBtn.addEventListener('click', loadGraph);
-    closeModalBtn.addEventListener('click', hideNodeModal);
-    cancelBtn.addEventListener('click', hideNodeModal);
-    nodeForm.addEventListener('submit', handleNodeFormSubmit);
-    backendSelect.addEventListener('change', updateModelOptions);
-    
-    // Execute workflow button
-    const executeWorkflowBtn = document.getElementById('execute-workflow-btn');
-    executeWorkflowBtn.addEventListener('click', executeWorkflow);
-    
-    // Update temperature value display
-    temperatureInput.addEventListener('input', () => {
-        temperatureValue.textContent = temperatureInput.value;
-    });
-    
-    // Node operations buttons instead of context menu
-    setupNodeOperations();
-    
-    // Fetch Groq model limits
-    fetchGroqModelLimits();
-    
-    // Load graph from localStorage if available
-    loadSavedGraph();
-    
-    // Functions
-    function showNodeModal() {
-        nodeModal.style.display = 'block';
-        document.getElementById('node-name').focus();
-    }
-    
-    function hideNodeModal() {
-        nodeModal.style.display = 'none';
-        nodeForm.reset();
-    }
-    
-    // Functions to fetch and update models
-    async function fetchAvailableModels() {
-        try {
-            console.log('Fetching available models...');
-            const response = await fetch('/api/models');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('Received models from server:', data);
-            
-            availableModels.ollama = data.ollama || [];
-            availableModels.groq = data.groq || [];
-            
-            // Update model options based on current backend selection
-            updateModelOptions();
-            
-            console.log('Available models loaded:', availableModels);
-        } catch (error) {
-            console.error('Error fetching models:', error);
-            // Set some default models in case of error
-            availableModels.ollama = ['llama3', 'llama2', 'mistral'];
-            availableModels.groq = [
-                'deepseek-r1-distill-llama-70b',
-                'deepseek-r1-distill-llama-32b',
-                'mixtral-8x7b-32768',
-                'qwen-2.5-32b',
-                'qwen-2.5-coder-32b'
-            ];
-            console.log('Using default models:', availableModels);
-            updateModelOptions();
-        }
-    }
-    
-    function updateModelOptions() {
-        const backend = backendSelect.value;
-        console.log(`Updating model options for backend: ${backend}`);
-        
-        const models = availableModels[backend] || [];
-        console.log(`Available models for ${backend}:`, models);
-        
-        // Clear existing options
-        modelSelect.innerHTML = '';
-        
-        if (models.length === 0) {
-            console.warn(`No models available for ${backend}`);
-            const option = document.createElement('option');
-            option.value = '';
-            option.textContent = 'No models available';
-            modelSelect.appendChild(option);
-        } else {
-            // Add models as options
-            models.forEach(model => {
-                const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
-                modelSelect.appendChild(option);
-            });
-            console.log(`Added ${models.length} models to dropdown`);
-        }
-    }
+// Import core modules
+import { EventBus } from './core/EventBus.js';
+import { ErrorHandler } from './core/ErrorHandler.js';
+import { APIClient } from './api/APIClient.js';
+import { StorageManager } from './storage/StorageManager.js';
+import { GraphManager } from './graph/GraphManager.js';
+import { ConversationManager } from './conversation/ConversationManager.js';
+import { ModelRegistry } from './models/ModelRegistry.js';
+import { WorkflowManager } from './workflow/WorkflowManager.js';
+import { UIManager } from './ui/UIManager.js';
+import { config } from './config.js';
 
-    function handleNodeFormSubmit(event) {
-        event.preventDefault();
-        
-        // Get form values
-        const name = document.getElementById('node-name').value;
-        const backend = document.getElementById('backend-select').value;
-        const model = document.getElementById('model-select').value;
-        const systemMessage = document.getElementById('system-message').value;
-        const temperature = parseFloat(document.getElementById('temperature').value);
-        const maxTokens = parseInt(document.getElementById('max-tokens').value);
-        
-        // Create node data
-        const nodeData = {
-            id: 'node-' + Date.now(),
-            name,
-            backend,
-            model,
-            systemMessage,
-            temperature,
-            maxTokens
-        };
-        
-        // Add node to graph
-        window.graphManager.addNode(nodeData);
-        
-        // Hide modal
-        hideNodeModal();
-    }
+/**
+ * Main application class that orchestrates all modules
+ */
+class AICanvas {
+  constructor() {
+    console.log('Initializing AI Canvas application...');
     
-    function saveGraph() {
-        try {
-            // Show saving indicator
-            const saveBtn = document.getElementById('save-graph-btn');
-            const originalText = saveBtn.textContent;
-            saveBtn.textContent = 'Saving...';
-            saveBtn.disabled = true;
-            
-            // Get graph data
-            const graphData = window.graphManager.exportGraph();
-            
-            // Create a new graph or update existing one
-            const graphName = prompt('Enter a name for this graph:', 'My AI Canvas Graph');
-            if (!graphName) {
-                saveBtn.textContent = originalText;
-                saveBtn.disabled = false;
-                return; // User cancelled
-            }
-            
-            const graphDescription = prompt('Enter a description (optional):', '');
-            
-            // Prepare the data
-            const graphPayload = {
-                name: graphName,
-                description: graphDescription || '',
-                layout_data: {
-                    positions: window.graphManager.getNodePositions()
-                }
-            };
-            
-            // Save to backend
-            fetch('/api/graphs', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(graphPayload)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    const graphId = data.data.id;
-                    
-                    // Now save all nodes
-                    const saveNodePromises = graphData.nodes.map(node => {
-                        return fetch(`/api/graphs/${graphId}/nodes`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(node)
-                        });
-                    });
-                    
-                    return Promise.all(saveNodePromises)
-                        .then(() => {
-                            // Now save all edges
-                            const saveEdgePromises = graphData.edges.map(edge => {
-                                return fetch('/api/edges', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify(edge)
-                                });
-                            });
-                            
-                            return Promise.all(saveEdgePromises);
-                        })
-                        .then(() => {
-                            alert(`Graph "${graphName}" saved successfully with ID: ${graphId}`);
-                            
-                            // Also save to localStorage as backup
-                            localStorage.setItem('aiCanvas_lastGraphId', graphId);
-                            localStorage.setItem('aiCanvas_graph', JSON.stringify(graphData));
-                        });
-                } else {
-                    throw new Error(data.message || 'Failed to save graph');
-                }
-            })
-            .catch(error => {
-                console.error('Error saving graph:', error);
-                alert('Error saving graph: ' + error.message);
-                
-                // Save to localStorage as fallback
-                localStorage.setItem('aiCanvas_graph', JSON.stringify(graphData));
-                alert('Graph saved to local storage as fallback.');
-            })
-            .finally(() => {
-                // Reset button
-                saveBtn.textContent = originalText;
-                saveBtn.disabled = false;
-            });
-        } catch (error) {
-            console.error('Error preparing graph data:', error);
-            alert('Error preparing graph data: ' + error.message);
-        }
-    }
+    // Create core services
+    this.eventBus = new EventBus();
+    this.errorHandler = new ErrorHandler(this.eventBus);
+    this.apiClient = new APIClient(config.apiBaseUrl, this.eventBus, this.errorHandler);
+    this.storageManager = new StorageManager(this.eventBus);
     
-    function loadGraph() {
-        // Show loading indicator
-        const loadBtn = document.getElementById('load-graph-btn');
-        const originalText = loadBtn.textContent;
-        loadBtn.textContent = 'Loading...';
-        loadBtn.disabled = true;
-        
-        // First try to load from backend
-        fetch('/api/graphs')
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success' && data.data && data.data.length > 0) {
-                    // Show graph selection dialog
-                    const graphs = data.data;
-                    
-                    // Create a simple dialog for graph selection
-                    const dialogOverlay = document.createElement('div');
-                    dialogOverlay.style.position = 'fixed';
-                    dialogOverlay.style.top = '0';
-                    dialogOverlay.style.left = '0';
-                    dialogOverlay.style.width = '100%';
-                    dialogOverlay.style.height = '100%';
-                    dialogOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-                    dialogOverlay.style.zIndex = '1000';
-                    dialogOverlay.style.display = 'flex';
-                    dialogOverlay.style.justifyContent = 'center';
-                    dialogOverlay.style.alignItems = 'center';
-                    
-                    const dialog = document.createElement('div');
-                    dialog.style.backgroundColor = 'white';
-                    dialog.style.padding = '20px';
-                    dialog.style.borderRadius = '5px';
-                    dialog.style.maxWidth = '500px';
-                    dialog.style.width = '90%';
-                    
-                    const title = document.createElement('h2');
-                    title.textContent = 'Select a Graph to Load';
-                    dialog.appendChild(title);
-                    
-                    const graphList = document.createElement('div');
-                    graphList.style.maxHeight = '300px';
-                    graphList.style.overflowY = 'auto';
-                    graphList.style.margin = '10px 0';
-                    
-                    graphs.forEach(graph => {
-                        const graphItem = document.createElement('div');
-                        graphItem.style.padding = '10px';
-                        graphItem.style.margin = '5px 0';
-                        graphItem.style.border = '1px solid #ddd';
-                        graphItem.style.borderRadius = '3px';
-                        graphItem.style.cursor = 'pointer';
-                        
-                        graphItem.innerHTML = `
-                            <strong>${graph.name}</strong>
-                            <div>${graph.description || 'No description'}</div>
-                            <div style="font-size: 0.8em; color: #666;">
-                                Created: ${new Date(graph.creation_date).toLocaleString()}
-                            </div>
-                        `;
-                        
-                        graphItem.addEventListener('click', () => {
-                            // Load the selected graph
-                            loadGraphById(graph.id);
-                            document.body.removeChild(dialogOverlay);
-                        });
-                        
-                        graphList.appendChild(graphItem);
-                    });
-                    
-                    dialog.appendChild(graphList);
-                    
-                    const cancelButton = document.createElement('button');
-                    cancelButton.textContent = 'Cancel';
-                    cancelButton.style.padding = '8px 16px';
-                    cancelButton.style.marginTop = '10px';
-                    cancelButton.addEventListener('click', () => {
-                        document.body.removeChild(dialogOverlay);
-                        loadBtn.textContent = originalText;
-                        loadBtn.disabled = false;
-                    });
-                    
-                    dialog.appendChild(cancelButton);
-                    dialogOverlay.appendChild(dialog);
-                    document.body.appendChild(dialogOverlay);
-                } else {
-                    // If no graphs in backend, try localStorage
-                    loadSavedGraph();
-                    loadBtn.textContent = originalText;
-                    loadBtn.disabled = false;
-                }
-            })
-            .catch(error => {
-                console.error('Error loading graphs from backend:', error);
-                // Try to load from localStorage as fallback
-                loadSavedGraph();
-                loadBtn.textContent = originalText;
-                loadBtn.disabled = false;
-            });
-    }
+    // Create domain-specific modules
+    this.modelRegistry = new ModelRegistry(this.apiClient, this.eventBus);
+    this.graphManager = new GraphManager(this.apiClient, this.eventBus, this.storageManager);
+    this.conversationManager = new ConversationManager(
+      this.apiClient, 
+      this.eventBus, 
+      this.graphManager
+    );
     
-    function loadGraphById(graphId) {
-        // Show loading indicator
-        const loadBtn = document.getElementById('load-graph-btn');
-        const originalText = loadBtn.textContent;
-        loadBtn.textContent = 'Loading...';
-        loadBtn.disabled = true;
-        
-        fetch(`/api/graphs/${graphId}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success' && data.data) {
-                    const graphData = data.data;
-                    
-                    // Clear existing graph
-                    window.graphManager.clearGraph();
-                    
-                    // Import nodes and edges
-                    window.graphManager.importGraph({
-                        nodes: graphData.nodes,
-                        edges: graphData.edges
-                    });
-                    
-                    // Apply layout if available
-                    if (graphData.layout_data && graphData.layout_data.positions) {
-                        window.graphManager.applyNodePositions(graphData.layout_data.positions);
-                    }
-                    
-                    // Store the current graph ID
-                    localStorage.setItem('aiCanvas_lastGraphId', graphId);
-                    
-                    alert(`Graph "${graphData.name}" loaded successfully!`);
-                } else {
-                    throw new Error(data.message || 'Failed to load graph');
-                }
-            })
-            .catch(error => {
-                console.error('Error loading graph:', error);
-                alert('Error loading graph: ' + error.message);
-                
-                // Try to load from localStorage as fallback
-                loadSavedGraph();
-            })
-            .finally(() => {
-                // Reset button
-                loadBtn.textContent = originalText;
-                loadBtn.disabled = false;
-            });
-    }
+    // Create workflow manager with all required dependencies
+    this.workflowManager = new WorkflowManager(
+      this.apiClient, 
+      this.eventBus, 
+      this.graphManager, 
+      this.conversationManager
+    );
     
-    function loadSavedGraph() {
-        try {
-            // Try to load the last used graph ID
-            const lastGraphId = localStorage.getItem('aiCanvas_lastGraphId');
-            if (lastGraphId) {
-                // Try to load from backend first
-                loadGraphById(lastGraphId);
-                return;
-            }
-            
-            // If no last graph ID, try localStorage
-            const savedGraph = localStorage.getItem('aiCanvas_graph');
-            if (savedGraph) {
-                const graphData = JSON.parse(savedGraph);
-                window.graphManager.importGraph(graphData);
-                console.log('Loaded graph from localStorage');
-                alert('Loaded graph from local storage (no database connection)');
-            } else {
-                alert('No saved graphs found.');
-            }
-        } catch (error) {
-            console.error('Error loading saved graph:', error);
-            alert('Error loading saved graph: ' + error.message);
-        }
-    }
+    // Create UI manager last since it depends on all other modules
+    this.uiManager = new UIManager(
+      this.eventBus,
+      this.graphManager,
+      this.conversationManager,
+      this.modelRegistry,
+      this.workflowManager,
+      this.errorHandler
+    );
     
-    function executeWorkflow() {
-        // Get the current graph ID from localStorage
-        const graphId = localStorage.getItem('aiCanvas_lastGraphId');
-        
-        if (!graphId) {
-            alert('Please save the graph first before executing the workflow.');
-            return;
-        }
-        
-        // Show execution in progress
-        const executeBtn = document.getElementById('execute-workflow-btn');
-        const originalText = executeBtn.textContent;
-        executeBtn.textContent = 'Executing...';
-        executeBtn.disabled = true;
-        
-        // Create a modal to show execution progress
-        const progressOverlay = document.createElement('div');
-        progressOverlay.style.position = 'fixed';
-        progressOverlay.style.top = '0';
-        progressOverlay.style.left = '0';
-        progressOverlay.style.width = '100%';
-        progressOverlay.style.height = '100%';
-        progressOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        progressOverlay.style.zIndex = '1000';
-        progressOverlay.style.display = 'flex';
-        progressOverlay.style.justifyContent = 'center';
-        progressOverlay.style.alignItems = 'center';
-        
-        const progressDialog = document.createElement('div');
-        progressDialog.style.backgroundColor = 'white';
-        progressDialog.style.padding = '20px';
-        progressDialog.style.borderRadius = '5px';
-        progressDialog.style.maxWidth = '600px';
-        progressDialog.style.width = '90%';
-        progressDialog.style.maxHeight = '80vh';
-        progressDialog.style.overflowY = 'auto';
-        
-        const progressTitle = document.createElement('h2');
-        progressTitle.textContent = 'Workflow Execution Progress';
-        progressDialog.appendChild(progressTitle);
-        
-        const progressContent = document.createElement('div');
-        progressContent.style.margin = '15px 0';
-        progressContent.innerHTML = '<p>Analyzing graph and determining execution order...</p>';
-        progressDialog.appendChild(progressContent);
-        
-        progressOverlay.appendChild(progressDialog);
-        document.body.appendChild(progressOverlay);
-        
-        // Execute the workflow
-        fetch(`/api/execute`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ graph_id: graphId })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                const executionOrder = data.data.execution_order;
-                const results = data.data.results;
-                
-                // Update progress dialog with execution results
-                let resultHtml = '<h3>Execution Order:</h3>';
-                resultHtml += '<ol>';
-                
-                executionOrder.forEach(nodeId => {
-                    const node = window.graphManager.getNodeData(nodeId);
-                    resultHtml += `<li><strong>${node ? node.name : nodeId}</strong></li>`;
-                });
-                
-                resultHtml += '</ol>';
-                
-                resultHtml += '<h3>Results:</h3>';
-                resultHtml += '<div style="margin-top: 10px;">';
-                
-                Object.keys(results).forEach(nodeId => {
-                    const node = window.graphManager.getNodeData(nodeId);
-                    const result = results[nodeId];
-                    
-                    resultHtml += `
-                        <div style="margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-                            <h4>${node ? node.name : nodeId}</h4>
-                            <div style="white-space: pre-wrap; font-family: monospace; margin-top: 5px; padding: 8px; background-color: #f5f5f5; border-radius: 3px; max-height: 200px; overflow-y: auto;">
-                                ${result.startsWith('Error:') ? 
-                                    `<span style="color: red;">${result}</span>` : 
-                                    result}
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                resultHtml += '</div>';
-                
-                // Add a close button
-                resultHtml += `
-                    <div style="margin-top: 20px; text-align: right;">
-                        <button id="close-progress-btn" style="padding: 8px 16px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                            Close
-                        </button>
-                    </div>
-                `;
-                
-                progressContent.innerHTML = resultHtml;
-                
-                // Add event listener to close button
-                document.getElementById('close-progress-btn').addEventListener('click', () => {
-                    document.body.removeChild(progressOverlay);
-                });
-                
-                // Refresh conversations after execution
-                Object.keys(results).forEach(nodeId => {
-                    // If this node is currently active, refresh its conversation display
-                    if (window.conversationManager.activeNodeId === nodeId) {
-                        window.conversationManager.displayConversation(nodeId);
-                    }
-                });
-                
-            } else {
-                progressContent.innerHTML = `
-                    <div style="color: red; margin: 15px 0;">
-                        <p>Error executing workflow: ${data.message}</p>
-                    </div>
-                    <div style="margin-top: 20px; text-align: right;">
-                        <button id="close-progress-btn" style="padding: 8px 16px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                            Close
-                        </button>
-                    </div>
-                `;
-                
-                document.getElementById('close-progress-btn').addEventListener('click', () => {
-                    document.body.removeChild(progressOverlay);
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error executing workflow:', error);
-            
-            progressContent.innerHTML = `
-                <div style="color: red; margin: 15px 0;">
-                    <p>Error executing workflow: ${error.message}</p>
-                </div>
-                <div style="margin-top: 20px; text-align: right;">
-                    <button id="close-progress-btn" style="padding: 8px 16px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        Close
-                    </button>
-                </div>
-            `;
-            
-            document.getElementById('close-progress-btn').addEventListener('click', () => {
-                document.body.removeChild(progressOverlay);
-            });
-        })
-        .finally(() => {
-            // Reset button
-            executeBtn.textContent = originalText;
-            executeBtn.disabled = false;
-        });
-    }
+    // Initialize error handling
+    this.setupErrorHandling();
     
-    // Fetch Groq model limits from the backend
-    async function fetchGroqModelLimits() {
-        try {
-            const response = await fetch('/api/groq/model-limits');
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const modelLimits = await response.json();
-            console.log('Groq model limits:', modelLimits);
-            
-            // Store the limits for later use
-            window.groqModelLimits = modelLimits;
-            
-            // Update the model select dropdown to show limits
-            updateModelOptionsWithLimits();
-        } catch (error) {
-            console.error('Error fetching Groq model limits:', error);
-        }
-    }
+    // Configure event monitoring
+    this.setupEventMonitoring();
     
-    // Update model options with limits information
-    function updateModelOptionsWithLimits() {
-        if (backendSelect.value === 'groq' && window.groqModelLimits) {
-            const models = availableModels.groq || [];
-            
-            // Clear existing options
-            modelSelect.innerHTML = '';
-            
-            if (models.length === 0) {
-                const option = document.createElement('option');
-                option.value = '';
-                option.textContent = 'No models available';
-                modelSelect.appendChild(option);
-            } else {
-                // Add models as options with limits info
-                models.forEach(model => {
-                    const option = document.createElement('option');
-                    option.value = model;
-                    
-                    // Add limits info if available
-                    const limits = window.groqModelLimits[model];
-                    if (limits) {
-                        option.textContent = `${model} (${limits.req_per_day}/day, ${limits.tokens_per_min}/min)`;
-                        option.title = `Requests: ${limits.req_per_min}/min, ${limits.req_per_day}/day\nTokens: ${limits.tokens_per_min}/min, ${limits.tokens_per_day}/day`;
-                    } else {
-                        option.textContent = model;
-                    }
-                    
-                    modelSelect.appendChild(option);
-                });
-            }
-        } else {
-            // Fall back to regular update for non-Groq backends
-            updateModelOptions();
-        }
+    // Make modules available globally for debugging and console access
+    this.exposeGlobals();
+  }
+  
+  /**
+   * Set up event monitoring for critical events
+   */
+  setupEventMonitoring() {
+    if (config.debug) {
+      // Monitor graph loading events
+      this.eventBus.subscribe('graph:loaded', (graphData) => {
+        console.log('DEBUG: Graph loaded event received:', graphData?.id || 'No ID');
+        console.log('Current graph IDs:');
+        console.log('- GraphManager:', this.graphManager.getCurrentGraphId());
+        console.log('- WorkflowManager:', this.workflowManager.currentGraphId);
+      });
+      
+      // Monitor graph importing events
+      this.eventBus.subscribe('graph:imported', (graphData) => {
+        console.log('DEBUG: Graph imported event received:', graphData?.id || 'No ID');
+        this.syncGraphIds();
+      });
+      
+      // Monitor workflow execution
+      this.eventBus.subscribe('workflow:executing', (data) => {
+        console.log('DEBUG: Workflow executing with graph ID:', data.graphId);
+      });
     }
+  }
+  
+  /**
+   * Synchronize graph IDs between GraphManager and WorkflowManager
+   */
+  syncGraphIds() {
+    const graphManagerId = this.graphManager.getCurrentGraphId();
     
-    // Override the original updateModelOptions function
-    const originalUpdateModelOptions = updateModelOptions;
-    updateModelOptions = function() {
-        if (backendSelect.value === 'groq' && window.groqModelLimits) {
-            updateModelOptionsWithLimits();
-        } else {
-            originalUpdateModelOptions();
-        }
+    if (graphManagerId) {
+      // Ensure the WorkflowManager has the same graph ID
+      this.workflowManager.currentGraphId = graphManagerId;
+      
+      if (config.debug) {
+        console.log(`DEBUG: Synchronized graph IDs to: ${graphManagerId}`);
+      }
+    } else if (this.workflowManager.currentGraphId) {
+      if (config.debug) {
+        console.warn('DEBUG: GraphManager has no current graph ID, but WorkflowManager does:', 
+          this.workflowManager.currentGraphId);
+      }
+    }
+  }
+  
+  /**
+   * Set up global error handling
+   */
+  setupErrorHandling() {
+    window.onerror = (message, source, lineno, colno, error) => {
+      this.errorHandler.handleError(error || new Error(message), {
+        source,
+        lineno,
+        colno,
+        context: 'Global error handler'
+      });
+      return true; // Prevent default error handling
     };
     
-    // Setup dark mode toggle
-    function initDarkMode() {
-        // Create dark mode toggle button
-        const darkModeToggle = document.createElement('button');
-        darkModeToggle.className = 'dark-mode-toggle';
-        darkModeToggle.title = 'Toggle Dark Mode';
-        darkModeToggle.innerHTML = '🌙'; // Moon emoji for dark mode
-        
-        // Check for saved preference
-        const darkModeEnabled = localStorage.getItem('aiCanvas_darkMode') === 'true';
-        if (darkModeEnabled) {
-            document.body.classList.add('dark-mode');
-            darkModeToggle.innerHTML = '☀️'; // Sun emoji for light mode
-        }
-        
-        // Add click handler
-        darkModeToggle.addEventListener('click', () => {
-            document.body.classList.toggle('dark-mode');
-            const isDarkMode = document.body.classList.contains('dark-mode');
-            
-            // Update button icon
-            darkModeToggle.innerHTML = isDarkMode ? '☀️' : '🌙';
-            
-            // Save preference
-            localStorage.setItem('aiCanvas_darkMode', isDarkMode);
-            
-            // Update graph styles if needed
-            if (window.graphManager && window.graphManager.cy) {
-                window.graphManager.cy.style().update();
-            }
-        });
-        
-        // Add to document
-        document.body.appendChild(darkModeToggle);
-    }
-    
-    // Setup node operations buttons instead of context menu
-    function setupNodeOperations() {
-        // Create node operations container
-        const nodeOpsContainer = document.createElement('div');
-        nodeOpsContainer.id = 'node-operations';
-        nodeOpsContainer.className = 'node-operations';
-        document.querySelector('.node-info').appendChild(nodeOpsContainer);
-        
-        // Update node operations when a node is selected
-        document.addEventListener('nodeSelected', (event) => {
-            const nodeData = event.detail;
-            updateNodeOperations(nodeData.id);
-        });
-        
-        document.addEventListener('nodeDeselected', () => {
-            nodeOpsContainer.innerHTML = '';
-        });
-        
-        function updateNodeOperations(nodeId) {
-            nodeOpsContainer.innerHTML = '';
-            
-            // Add operation buttons
-            addOperationButton('Remove Node', () => {
-                window.graphManager.removeNode(nodeId);
-            });
-            
-            addOperationButton('Clear Conversation', () => {
-                window.conversationManager.clearConversation(nodeId);
-            });
-            
-            addOperationButton('Add Connection', () => {
-                // Start edge drawing mode using the GraphInteraction module
-                window.graphManager.interaction.startEdgeDrawing(nodeId);
-                
-                // Change button text to indicate mode
-                const button = nodeOpsContainer.querySelector('button:last-child');
-                button.textContent = 'Creating Connection...';
-                button.classList.add('active-operation');
-                
-                // Set up a one-time event listener to reset the button when connection is complete
-                const resetButtonHandler = function() {
-                    // Reset button
-                    button.textContent = 'Add Connection';
-                    button.classList.remove('active-operation');
-                    document.removeEventListener('connectionComplete', resetButtonHandler);
-                };
-                
-                document.addEventListener('connectionComplete', resetButtonHandler, { once: true });
-                
-                window.graphManager.cy.on('tap', selectTargetHandler);
-            });
-            
-            // If this is a Groq node, add model limits info
-            const nodeData = window.graphManager.getNodeData(nodeId);
-            if (nodeData && nodeData.backend === 'groq' && window.groqModelLimits) {
-                const limits = window.groqModelLimits[nodeData.model];
-                if (limits) {
-                    const limitsInfo = document.createElement('div');
-                    limitsInfo.className = 'model-limits-info';
-                    limitsInfo.innerHTML = `
-                        <h4>Model Limits</h4>
-                        <div class="limits-grid">
-                            <div>Requests:</div>
-                            <div>${limits.req_per_min}/min, ${limits.req_per_day}/day</div>
-                            <div>Tokens:</div>
-                            <div>${limits.tokens_per_min}/min, ${limits.tokens_per_day === "No limit" ? "No limit/day" : limits.tokens_per_day + "/day"}</div>
-                        </div>
-                    `;
-                    nodeOpsContainer.appendChild(limitsInfo);
-                }
-            }
-        }
-        
-        function addOperationButton(text, callback) {
-            const button = document.createElement('button');
-            button.textContent = text;
-            button.className = 'node-op-btn';
-            button.addEventListener('click', callback);
-            nodeOpsContainer.appendChild(button);
-            return button;
-        }
-    }
-    
-    // Add event listener for edge operations
-    window.graphManager.cy.on('tap', 'edge', function(event) {
-        const edge = event.target;
-        const edgeId = edge.id();
-        
-        // Create a temporary floating button to remove the edge
-        const removeBtn = document.createElement('button');
-        removeBtn.textContent = 'Remove Connection';
-        removeBtn.className = 'floating-edge-btn';
-        
-        // Position near the edge
-        const position = event.renderedPosition;
-        removeBtn.style.position = 'absolute';
-        removeBtn.style.left = position.x + 'px';
-        removeBtn.style.top = position.y + 'px';
-        removeBtn.style.zIndex = '1000';
-        
-        // Add click handler
-        removeBtn.addEventListener('click', () => {
-            window.graphManager.removeEdge(edgeId);
-            document.body.removeChild(removeBtn);
-        });
-        
-        // Auto-remove after 3 seconds
-        setTimeout(() => {
-            if (document.body.contains(removeBtn)) {
-                document.body.removeChild(removeBtn);
-            }
-        }, 3000);
-        
-        // Add to document
-        document.body.appendChild(removeBtn);
+    window.addEventListener('unhandledrejection', (event) => {
+      this.errorHandler.handleError(event.reason, {
+        context: 'Unhandled Promise rejection'
+      });
+      event.preventDefault();
     });
+  }
+  
+  /**
+   * Expose key objects to the global scope for debugging and legacy compatibility
+   */
+  exposeGlobals() {
+    // Make key managers available globally
+    window.graphManager = this.graphManager;
+    window.conversationManager = this.conversationManager;
+    window.errorHandler = this.errorHandler;
+    window.eventBus = this.eventBus;
+    window.workflowManager = this.workflowManager;
+    
+    // Add helper methods for debugging
+    window.debugGraphState = () => {
+      console.log('Current graph state:');
+      console.log('- GraphManager ID:', this.graphManager.getCurrentGraphId());
+      console.log('- GraphManager name:', this.graphManager.getCurrentGraphName());
+      console.log('- WorkflowManager ID:', this.workflowManager.currentGraphId);
+      console.log('- Nodes count:', this.graphManager.nodes.length);
+      console.log('- Edges count:', this.graphManager.edges.length);
+      return {
+        graphManagerId: this.graphManager.getCurrentGraphId(),
+        graphName: this.graphManager.getCurrentGraphName(),
+        workflowManagerId: this.workflowManager.currentGraphId,
+        nodesCount: this.graphManager.nodes.length,
+        edgesCount: this.graphManager.edges.length
+      };
+    };
+    
+    // Add sync method for debugging
+    window.syncGraphIds = () => this.syncGraphIds();
+    
+    // Add resetLocalGraphData to global scope for backward compatibility
+    window.resetLocalGraphData = () => {
+      this.storageManager.removeItem('aiCanvas_lastGraphId');
+      this.storageManager.removeItem('aiCanvas_graph');
+      console.log('Local graph data has been reset');
+      alert('Local graph data has been reset. Please try creating a new graph.');
+    };
+    
+    // Add resetDatabase to global scope for backward compatibility
+    window.resetDatabase = async () => {
+      if (!confirm('WARNING: This will delete ALL graphs and data. This action cannot be undone. Are you sure?')) {
+        return;
+      }
+  
+      const resetDbBtn = document.getElementById('reset-db-btn');
+      if (resetDbBtn) {
+        resetDbBtn.textContent = 'Resetting...';
+        resetDbBtn.disabled = true;
+      }
+      
+      try {
+        await this.graphManager.resetDatabase();
+        
+        alert('Database has been reset successfully');
+        
+        // Also clear local storage
+        window.resetLocalGraphData();
+        
+        // Clear the current graph
+        this.graphManager.clearGraph();
+      } catch (error) {
+        console.error('Error resetting database:', error);
+        alert(`Error resetting database: ${error.message}`);
+      } finally {
+        if (resetDbBtn) {
+          resetDbBtn.textContent = 'Reset DB';
+          resetDbBtn.disabled = false;
+        }
+      }
+    };
+  }
+  
+  /**
+   * Initialize the application and all modules
+   */
+  async initialize() {
+    try {
+      // Enable debug mode in development
+      if (config.debug) {
+        this.eventBus.setDebugMode(true);
+        console.log('Debug mode enabled');
+      }
+      
+      // Initialize modules in the correct order
+      await this.modelRegistry.initialize();
+      await this.graphManager.initialize();
+      await this.conversationManager.initialize();
+      await this.workflowManager.initialize();
+      
+      // Initialize UI last
+      await this.uiManager.initialize();
+      
+      console.log('AI Canvas application initialized successfully');
+      
+      // Try to load saved graph
+      await this.loadInitialGraph();
+      
+      // Ensure graph IDs are synchronized
+      this.syncGraphIds();
+      
+      if (config.debug) {
+        console.log('Initialization complete. Current graph state:');
+        window.debugGraphState();
+      }
+    } catch (error) {
+      this.errorHandler.handleError(error, {
+        context: 'Application initialization'
+      });
+    }
+  }
+  
+  /**
+   * Load the initial graph from last session or create a new one
+   */
+  async loadInitialGraph() {
+    try {
+      const lastGraphId = this.storageManager.getItem('aiCanvas_lastGraphId');
+      
+      if (lastGraphId) {
+        console.log(`Attempting to load last used graph: ${lastGraphId}`);
+        try {
+          const loadedGraph = await this.graphManager.loadGraphById(lastGraphId);
+          
+          // Explicitly update the workflow manager with the loaded graph ID
+          if (loadedGraph && loadedGraph.id) {
+            this.workflowManager.currentGraphId = loadedGraph.id;
+            
+            if (config.debug) {
+              console.log(`Set WorkflowManager.currentGraphId to ${loadedGraph.id}`);
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to load graph ${lastGraphId}:`, error);
+          
+          // If we got a 404, the graph doesn't exist anymore
+          if (error.status === 404) {
+            this.storageManager.removeItem('aiCanvas_lastGraphId');
+            this.storageManager.removeItem('aiCanvas_graph');
+            console.log('Removed invalid graph reference from local storage');
+          }
+          
+          // Try to load from local storage as fallback
+          this.loadGraphFromLocalStorage();
+        }
+      } else {
+        this.loadGraphFromLocalStorage();
+      }
+    } catch (error) {
+      this.errorHandler.handleError(error, {
+        context: 'Loading initial graph'
+      });
+    }
+  }
+  
+  /**
+   * Attempt to load a graph from local storage
+   */
+  loadGraphFromLocalStorage() {
+    try {
+      const savedGraph = this.storageManager.getItem('aiCanvas_graph');
+      if (savedGraph) {
+        const graphData = typeof savedGraph === 'string' ? JSON.parse(savedGraph) : savedGraph;
+        this.graphManager.importGraph(graphData);
+        
+        // Explicitly update the workflow manager with the graph ID
+        if (graphData && graphData.id) {
+          this.workflowManager.currentGraphId = graphData.id;
+          
+          if (config.debug) {
+            console.log(`Set WorkflowManager.currentGraphId to ${graphData.id} from localStorage`);
+          }
+        } else {
+          // If the graph data doesn't have an ID, sync with whatever the GraphManager has
+          setTimeout(() => this.syncGraphIds(), 100);
+        }
+        
+        console.log('Loaded graph from local storage');
+      } else {
+        console.log('No saved graph found. Starting with an empty canvas.');
+      }
+    } catch (error) {
+      this.errorHandler.handleError(error, {
+        context: 'Loading graph from local storage'
+      });
+      console.log('Failed to load graph from local storage. Starting with an empty canvas.');
+    }
+  }
+}
+
+// Bootstrap the application when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+  const app = new AICanvas();
+  app.initialize();
 });
