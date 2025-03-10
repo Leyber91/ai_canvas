@@ -11,13 +11,16 @@ export class ExecutionEngine {
   constructor(workflowManager) {
     this.workflowManager = workflowManager;
     this.executionTimeout = null;
+    this.isServerExecutionAvailable = true; // Track if server endpoint exists
   }
   
   /**
    * Initialize the execution engine
    */
   initialize() {
-    // Nothing to initialize for now
+    // Check if we have previously determined server execution is unavailable
+    this.isServerExecutionAvailable = localStorage.getItem('aiCanvas_skipExecuteApiCall') !== 'true';
+    console.log("ExecutionEngine initialized, server execution available:", this.isServerExecutionAvailable);
   }
   
   /**
@@ -149,6 +152,7 @@ export class ExecutionEngine {
       
       throw error;
     } finally {
+      // Always make sure execution state is reset regardless of success or failure
       executionState.isExecuting = false;
     }
   }
@@ -162,43 +166,66 @@ export class ExecutionEngine {
   async executeWithoutCycles(graphId) {
       const { apiClient, topologicalSorter, executionState } = this.workflowManager;
       
-      // Compute execution order client-side as a backup
+      // Compute execution order client-side 
       const clientSideOrder = topologicalSorter.computeTopologicalSort();
+      console.log("Computed client-side execution order:", clientSideOrder);
       
-      // Execute the workflow via the API
-      try {
-        console.log("Executing workflow for graph:", graphId);
-        const response = await apiClient.post('/api/execute', {
-          graph_id: graphId
-        });
-        
-        console.log("Workflow execution response:", response);
-        
-        if (response.status !== 'success') {
-          throw new Error(response.message || 'Failed to execute workflow');
+      // Skip API call if we know it's not available
+      if (this.isServerExecutionAvailable) {
+        try {
+          console.log("Attempting server execution for graph:", graphId);
+          
+          // Execute the workflow via the API with a timeout
+          const responsePromise = apiClient.post('/api/execute', {
+            graph_id: graphId
+          });
+          
+          // Create a timeout promise
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('API request timed out')), 5000);
+          });
+          
+          // Race between the API call and the timeout
+          const response = await Promise.race([responsePromise, timeoutPromise]);
+          
+          console.log("Workflow execution response:", response);
+          
+          if (response.status !== 'success') {
+            throw new Error(response.message || 'Failed to execute workflow');
+          }
+          
+          // Ensure we have valid data structure even if the API response format varies
+          const executionOrder = response.data?.execution_order || [];
+          const results = response.data?.results || {};
+          
+          // Update execution state
+          executionState.executionOrder = executionOrder;
+          executionState.executionResults = results;
+          
+          // Return properly structured results
+          return {
+            execution_order: executionOrder,
+            results: results
+          };
+        } catch (error) {
+          console.error("Workflow execution API error:", error);
+          
+          // Check if 404 error to mark server execution unavailable
+          if (error.response && error.response.status === 404) {
+            console.log("Server execution endpoint not available, marking for future bypass");
+            this.isServerExecutionAvailable = false;
+            localStorage.setItem('aiCanvas_skipExecuteApiCall', 'true');
+          }
+          
+          // Continue with client-side execution
+          console.log("Falling back to client-side execution");
         }
-        
-        // Ensure we have valid data structure even if the API response format varies
-        const executionOrder = response.data?.execution_order || [];
-        const results = response.data?.results || {};
-        
-        // Update execution state
-        executionState.executionOrder = executionOrder;
-        executionState.executionResults = results;
-        
-        // Return properly structured results
-        return {
-          execution_order: executionOrder,
-          results: results
-        };
-      } catch (error) {
-        console.error("Workflow execution error:", error);
-        // If server execution fails but we have a valid client-side order, try to execute locally
-        if (clientSideOrder) {
-          return this.executeWorkflowLocally(graphId, clientSideOrder);
-        }
-        throw error;
+      } else {
+        console.log("Skipping server API call, using client-side execution");
       }
+      
+      // If we reach here, execute locally
+      return this.executeWorkflowLocally(graphId, clientSideOrder);
     }
           
   /**
@@ -400,17 +427,32 @@ export class ExecutionEngine {
   async executeWorkflowLocally(graphId, executionOrder) {
     const { graphManager, conversationManager, apiClient, executionState, config } = this.workflowManager;
     
+    // Validate execution order
+    if (!executionOrder || !Array.isArray(executionOrder) || executionOrder.length === 0) {
+      throw new Error('Invalid execution order: empty or not an array');
+    }
+    
     executionState.executionOrder = [];
     const results = {};
     const nodeIterationCount = {};
     
     // Track iterations of each node (for cycles)
     executionOrder.forEach(nodeId => {
-      nodeIterationCount[nodeId] = (nodeIterationCount[nodeId] || 0) + 1;
+      if (nodeId) { // Ensure nodeId is valid
+        nodeIterationCount[nodeId] = (nodeIterationCount[nodeId] || 0) + 1;
+      }
     });
     
     // Execute nodes in the given order
-    for (const nodeId of executionOrder) {
+    for (let i = 0; i < executionOrder.length; i++) {
+      const nodeId = executionOrder[i];
+      
+      // Skip invalid node IDs
+      if (!nodeId) {
+        console.warn('Skipping empty node ID in execution order');
+        continue;
+      }
+      
       const iteration = nodeIterationCount[nodeId] > 1 ? 
         nodeIterationCount[nodeId] - 1 : 0;
       
@@ -437,6 +479,7 @@ export class ExecutionEngine {
       const node = graphManager.getNodeData(nodeId);
       
       if (!node) {
+        console.warn(`Node ${nodeId} not found in graph manager`);
         results[nodeId] = results[nodeId] || [];
         results[nodeId][iteration] = "Error: Node not found";
         continue;
@@ -485,8 +528,14 @@ export class ExecutionEngine {
             `Execute workflow step (iteration ${iteration + 1})`
         };
         
-        // Send the request
-        const response = await apiClient.post('/api/node/chat', requestData);
+        // Send the request with timeout
+        const responsePromise = apiClient.post('/api/node/chat', requestData);
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error(`Node execution timed out for ${nodeId}`)), 
+            (config.nodeTimeoutSeconds || 60) * 1000);
+        });
+        
+        const response = await Promise.race([responsePromise, timeoutPromise]);
         
         // Extract the result
         let result = '';
@@ -494,6 +543,12 @@ export class ExecutionEngine {
           result = response.message?.content || 'No response';
         } else if (node.backend === 'groq') {
           result = response.choices?.[0]?.message?.content || 'No response';
+        } else {
+          // Fallback for other backends
+          result = response.message?.content || 
+                   response.choices?.[0]?.message?.content || 
+                   JSON.stringify(response) || 
+                   'No response';
         }
         
         // Store result for this iteration
@@ -512,6 +567,7 @@ export class ExecutionEngine {
         });
       } catch (error) {
         const errorMessage = `Error: ${error.message}`;
+        console.error(`Error executing node ${nodeId}:`, error);
         
         // Store error for this iteration
         if (nodeIterationCount[nodeId] > 1) {
@@ -531,6 +587,12 @@ export class ExecutionEngine {
       
       // Check if we should pause between nodes
       await this.nodePause();
+      
+      // Check if execution was canceled
+      if (!executionState.isExecuting) {
+        console.log('Execution was stopped, aborting remaining steps');
+        break;
+      }
     }
     
     // Store execution results
@@ -590,6 +652,32 @@ export class ExecutionEngine {
     // Default pause is 100ms
     const pauseTime = 100;
     return new Promise(resolve => setTimeout(resolve, pauseTime));
+  }
+  
+  /**
+   * Stop the current execution
+   */
+  stopExecution() {
+    if (!this.workflowManager.executionState.isExecuting) {
+      return;
+    }
+    
+    // Clear any timeouts
+    this.clearExecutionTimeout();
+    
+    // Set executing flag to false to stop processing
+    this.workflowManager.executionState.isExecuting = false;
+    
+    // Add message to execution state
+    this.workflowManager.executionState.errors.push('Execution stopped by user');
+    
+    // Publish stopped event
+    this.workflowManager.eventBus.publish('workflow:stopped', {
+      timestamp: Date.now(),
+      executionState: { ...this.workflowManager.executionState }
+    });
+    
+    console.log('Workflow execution stopped by user');
   }
   
   /**

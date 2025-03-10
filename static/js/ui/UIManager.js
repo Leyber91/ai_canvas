@@ -2,14 +2,16 @@
  * ui/UIManager.js
  * 
  * Core UI manager that coordinates the other UI components.
+ * Integrates with ThemeManager for consistent styling and animations.
  */
 import { NodeModalManager } from './NodeModalManager.js';
 import { ConversationPanelManager } from './ConversationPanelManager.js';
 import { GraphControlsManager } from './GraphControlsManager.js';
 import { NodeOperationsManager } from './NodeOperationsManager.js';
-import { DialogManager } from './DialogManager.js';
+import { DialogManager } from './dialog/DialogManager.js';
 import { NotificationManager } from './NotificationManager.js';
 import { WorkflowPanelManager } from './WorkflowPanelManager.js';
+import { ThemeManager } from './ThemeManager.js';
 
 export class UIManager {
     constructor(eventBus, graphManager, conversationManager, modelRegistry, workflowManager, errorHandler) {
@@ -22,6 +24,9 @@ export class UIManager {
       
       // Store DOM references
       this.elements = {};
+      
+      // Initialize theme manager first to establish styling
+      this.themeManager = new ThemeManager(this);
       
       // Create sub-managers
       this.nodeModalManager = new NodeModalManager(this);
@@ -40,8 +45,13 @@ export class UIManager {
      * Initialize the UI Manager and all sub-managers
      */
     async initialize() {
+      console.log('Initializing UI Manager');
+      
       // Get references to DOM elements
       this.findDOMElements();
+      
+      // Initialize theme manager first to set up styling
+      this.themeManager.initialize();
       
       // Initialize sub-managers
       this.nodeModalManager.initialize();
@@ -181,7 +191,7 @@ export class UIManager {
         // Escape to close modals
         if (event.key === 'Escape') {
           this.nodeModalManager.hideNodeModal();
-          this.dialogManager.hideActiveDialog();
+          this.dialogManager.closeAllDialogs();
         }
       });
     }
@@ -211,6 +221,9 @@ export class UIManager {
       
       // Update node operations safely
       this.nodeOperationsManager.updateNodeOperations(nodeData.id);
+      
+      // Let theme manager know about node selection
+      this.themeManager.handleNodeSelected(nodeData);
     }
     
     /**
@@ -232,6 +245,9 @@ export class UIManager {
       
       // Clear node operations
       this.nodeOperationsManager.clearNodeOperations();
+      
+      // Let theme manager know about node deselection
+      this.themeManager.handleNodeDeselected();
     }
     
     /**
@@ -371,6 +387,9 @@ export class UIManager {
     handleWorkflowExecuting(data) {
       console.log(`Executing workflow: ${data.graphId}`);
       this.showNotification('Workflow execution started', 'info');
+      
+      // Let theme manager handle workflow execution UI updates
+      this.themeManager.handleWorkflowExecuting(data);
     }
     
     /**
@@ -379,8 +398,10 @@ export class UIManager {
      * @param {Object} data - Node execution data
      */
     handleNodeExecuting(data) {
-      // This will be handled by the workflow panel manager
       console.log(`Executing node: ${data.nodeId}`);
+      
+      // Let theme manager handle node execution UI updates
+      this.themeManager.handleNodeExecuting(data);
     }
     
     /**
@@ -389,8 +410,10 @@ export class UIManager {
      * @param {Object} data - Node completion data
      */
     handleNodeCompleted(data) {
-      // This will be handled by the workflow panel manager
       console.log(`Node completed: ${data.nodeId}`);
+      
+      // Let theme manager handle node completion UI updates
+      this.themeManager.handleNodeCompleted(data);
     }
     
     /**
@@ -401,37 +424,39 @@ export class UIManager {
     handleNodeError(data) {
       console.error(`Error in node ${data.nodeId}: ${data.error}`);
       this.showNotification(`Error in node: ${data.error}`, 'error');
+      
+      // Let theme manager handle node error UI updates
+      this.themeManager.handleNodeError(data);
     }
     
     /**
      * Handle workflow completed event
      * 
      * @param {Object} results - Workflow execution results
-          */
-      // In UIManager.js - Update this method to also update the workflow panel
-      // In UIManager.js
-      handleWorkflowCompleted(results) {
-        console.log('Workflow execution completed with results:', results);
-        this.showNotification('Workflow execution completed successfully', 'success');
-        
-        // Visualize the execution in the graph
-        if (results.executionOrder && this.graphManager.visualizeWorkflowExecution) {
-          this.graphManager.visualizeWorkflowExecution(results.executionOrder, results.results);
-        }
-        
-        // Explicitly update the workflow panel if it exists
-        if (this.workflowPanelManager) {
-          this.workflowPanelManager.handleWorkflowCompleted(results);
-        }
-        
-        // Force refresh any active conversations that received results
-        if (this.conversationManager && results.results) {
-          const activeNodeId = this.conversationManager.activeNodeId;
-          if (activeNodeId && results.results[activeNodeId]) {
-            this.conversationManager.displayConversation(activeNodeId);
-          }
+     */
+    handleWorkflowCompleted(results) {
+      console.log('Workflow execution completed');
+      this.showNotification('Workflow execution completed successfully', 'success');
+      
+      // Visualize the execution in the graph
+      if (results.executionOrder && this.graphManager.visualizeWorkflowExecution) {
+        this.graphManager.visualizeWorkflowExecution(results.executionOrder, results.results);
+      }
+      
+      // Let theme manager handle workflow completion UI updates
+      this.themeManager.handleWorkflowCompleted(results);
+      
+      // Update workflow panel manager as well
+      this.workflowPanelManager.handleWorkflowCompleted(results);
+      
+      // Force refresh any active conversations that received results
+      if (this.conversationManager && results.results) {
+        const activeNodeId = this.conversationManager.activeNodeId;
+        if (activeNodeId && results.results[activeNodeId]) {
+          this.conversationManager.displayConversation(activeNodeId);
         }
       }
+    }
     
     /**
      * Handle workflow failed event
@@ -441,6 +466,9 @@ export class UIManager {
     handleWorkflowFailed(data) {
       console.error(`Workflow execution failed: ${data.error}`);
       this.showNotification(`Workflow execution failed: ${data.error}`, 'error');
+      
+      // Let theme manager handle workflow failure UI updates
+      this.themeManager.handleWorkflowFailed(data);
     }
     
     /**
@@ -501,259 +529,17 @@ export class UIManager {
     }
     
     /**
-     * Execute the workflow
-     * Convenience method that delegates to the workflow panel manager
+     * Clean up resources when UIManager is destroyed
      */
-    async executeWorkflow() {
-      try {
-        // Show execution in progress
-        const executeBtn = this.elements.executeWorkflowBtn;
-        const originalText = executeBtn.textContent;
-        executeBtn.textContent = 'Executing...';
-        executeBtn.disabled = true;
-        
-        // Check if there's a graph ID
-        const graphId = this.graphManager.getCurrentGraphId();
-        if (!graphId) {
-          alert('Please save the graph first before executing the workflow.');
-          return;
-        }
-        
-        // Show execution progress modal
-        const progressDialog = this.showWorkflowProgressDialog();
-        
-        try {
-          // Validate workflow before execution
-          const validation = this.workflowManager.validateWorkflow();
-          
-          // If validation failed
-          if (!validation.success) {
-            // If cycles are detected, highlight them
-            if (validation.hasCycles) {
-              this.workflowManager.highlightCycles();
-            }
-            
-            this.handleWorkflowError(progressDialog, new Error(validation.errors.join('. ')));
-            return;
-          }
-          
-          // Execute the workflow
-          const results = await this.workflowManager.executeWorkflow(graphId);
-          
-          // Update progress dialog with results
-          this.updateWorkflowProgressDialog(progressDialog, results);
-        } catch (error) {
-          this.handleWorkflowError(progressDialog, error);
-        }
-      } finally {
-        // Reset button
-        const executeBtn = this.elements.executeWorkflowBtn;
-        executeBtn.textContent = originalText;
-        executeBtn.disabled = false;
+    destroy() {
+      // Clean up theme manager
+      if (this.themeManager && typeof this.themeManager.destroy === 'function') {
+        this.themeManager.destroy();
       }
-    }
-
-/**
- * Handle workflow executing event
- * 
- * @param {Object} data - Event data
- */
-handleWorkflowExecuting(data) {
-  console.log(`Executing workflow: ${data.graphId}`);
-  
-  // Disable any controls that might interfere with execution
-  this.elements.executeWorkflowBtn.disabled = true;
-  
-  // Show a loading indicator if needed
-  if (this.elements.workflowStatusIndicator) {
-    this.elements.workflowStatusIndicator.textContent = "Executing workflow...";
-    this.elements.workflowStatusIndicator.classList.add('executing');
-  }
-}
-
-/**
- * Handle workflow completed event
- * 
- * @param {Object} results - Workflow execution results
- */
-handleWorkflowCompleted(results) {
-  console.log('Workflow execution completed');
-  
-  // Re-enable workflow controls
-  this.elements.executeWorkflowBtn.disabled = false;
-  
-  // Update UI with results
-  if (this.elements.workflowStatusIndicator) {
-    this.elements.workflowStatusIndicator.textContent = "Workflow completed successfully";
-    this.elements.workflowStatusIndicator.classList.remove('executing');
-    this.elements.workflowStatusIndicator.classList.add('completed');
-  }
-  
-  // Refresh conversation if active node has results
-  if (this.conversationManager.activeNodeId && 
-      results.results && 
-      results.results[this.conversationManager.activeNodeId]) {
-    this.conversationManager.displayConversation(this.conversationManager.activeNodeId);
-  }
-}
-
-/**
- * Handle node executing event
- * 
- * @param {Object} data - Event data
- */
-handleNodeExecuting(data) {
-  const { nodeId, iteration, totalNodes, progress } = data;
-  
-  console.log(`Executing node ${nodeId} (iteration ${iteration + 1})`);
-  
-  // Update progress indicator if available
-  if (this.elements.workflowProgress) {
-    this.elements.workflowProgress.value = progress * 100;
-    this.elements.workflowProgress.textContent = `${Math.round(progress * 100)}%`;
-  }
-  
-  // Highlight the current node in the graph
-  this.highlightExecutingNode(nodeId);
-}
-
-/**
- * Highlight the currently executing node
- * 
- * @param {string} nodeId - ID of the executing node
- */
-highlightExecutingNode(nodeId) {
-  // Delegate to workflow visualizer if available
-  if (this.workflowManager.visualizer) {
-    this.workflowManager.visualizer.showNodeExecution(nodeId);
-  }
-}
-
-/**
- * Get suggestions for fixing workflow issues
- * 
- * @returns {Promise<void>}
- */
-async showWorkflowSuggestions() {
-  // Get suggestions from workflow manager
-  const suggestions = this.workflowManager.getWorkflowSuggestions();
-  
-  if (suggestions.length === 0) {
-    alert('No workflow issues detected.');
-    return;
-  }
-  
-  // Create a modal to display suggestions
-  const dialogContent = document.createElement('div');
-  
-  suggestions.forEach(suggestion => {
-    const suggestionEl = document.createElement('div');
-    suggestionEl.className = `suggestion suggestion-${suggestion.type}`;
-    
-    // Create suggestion content
-    suggestionEl.innerHTML = `
-      <h4>${suggestion.message}</h4>
-      ${suggestion.details ? `<p>${suggestion.details}</p>` : ''}
-    `;
-    
-    // Add action button if available
-    if (suggestion.action) {
-      const actionBtn = document.createElement('button');
-      actionBtn.textContent = suggestion.action.label;
-      actionBtn.className = 'suggestion-action';
       
-      // Handle action button click
-      actionBtn.addEventListener('click', () => {
-        this.handleSuggestionAction(suggestion.action.type);
-        // Close the dialog
-        const dialog = suggestionEl.closest('.modal');
-        if (dialog) {
-          dialog.style.display = 'none';
-        }
-      });
+      // Clean up other managers if needed
       
-      suggestionEl.appendChild(actionBtn);
+      // Remove event listeners
+      // This would require keeping references to bound event handlers
     }
-    
-    dialogContent.appendChild(suggestionEl);
-  });
-  
-  // Display the modal
-  this.showModal('Workflow Suggestions', dialogContent);
-}
-
-/**
- * Handle a suggestion action
- * 
- * @param {string} actionType - Type of action to perform
- */
-handleSuggestionAction(actionType) {
-  switch (actionType) {
-    case 'highlight-cycles':
-      this.workflowManager.highlightCycles();
-      break;
-    case 'break-cycles':
-      const removedEdges = this.workflowManager.breakCycles();
-      alert(`Removed ${removedEdges.length} edges to break cycles.`);
-      break;
-    case 'enable-cycles':
-      this.workflowManager.updateConfig({ allowCycles: true, cycleHandlingMode: 'iterate' });
-      alert('Cycle iteration is now enabled. Workflows can include cycles.');
-      break;
-    case 'reduce-iterations':
-      this.workflowManager.updateConfig({ maxCycleIterations: 2 });
-      alert('Maximum cycle iterations reduced to 2.');
-      break;
-    case 'highlight-isolated':
-      // Find and highlight isolated nodes
-      this.highlightIsolatedNodes();
-      break;
-    default:
-      console.warn(`Unknown suggestion action: ${actionType}`);
-  }
-}
-
-/**
- * Highlight isolated nodes in the graph
- */
-highlightIsolatedNodes() {
-  const connectedNodes = new Set();
-  
-  // Find all nodes that are connected by edges
-  this.graphManager.edges.forEach(edge => {
-    connectedNodes.add(edge.source);
-    connectedNodes.add(edge.target);
-  });
-  
-  // Find isolated nodes
-  const isolatedNodes = this.graphManager.nodes.filter(node => 
-    !connectedNodes.has(node.id)
-  ).map(node => node.id);
-  
-  if (isolatedNodes.length === 0) {
-    alert('No isolated nodes found.');
-    return;
-  }
-  
-  // Highlight isolated nodes
-  isolatedNodes.forEach(nodeId => {
-    const node = this.graphManager.cy.$(`#${nodeId}`);
-    if (node.length === 0) return;
-    
-    node.style({
-      'border-width': 3,
-      'border-color': '#f39c12', // Orange
-      'border-opacity': 1
-    });
-  });
-  
-  // Focus view on isolated nodes
-  this.graphManager.cy.fit(
-    this.graphManager.cy.nodes().filter(node => isolatedNodes.includes(node.id())),
-    50 // Padding
-  );
-  
-  // Show message
-  alert(`Found ${isolatedNodes.length} isolated nodes. These nodes have no connections and will not receive context from other nodes.`);
-}
 }

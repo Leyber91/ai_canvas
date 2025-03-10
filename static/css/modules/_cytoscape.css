@@ -1,17 +1,76 @@
-/* _cytoscape.css */
+/* Enhanced cytoscape.css with sci-fi glassmorphic theme */
 
-.node {
-    background-color: #3498db;
-    color: white;
+/* Cytoscape container */
+#cytoscape-container {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+  }
+  
+  /* Node styles */
+  .node {
+    background-color: var(--glass-bg);
+    color: var(--text-primary);
     text-align: center;
-    padding: 10px;
-    border-radius: 5px;
-}
-
-.ollama-node {
-    background-color: #3498db;
-}
-
-.groq-node {
-    background-color: #9b59b6;
-}
+    border-radius: var(--border-radius-md);
+    backdrop-filter: blur(var(--glass-blur));
+    box-shadow: var(--glass-shadow);
+    border: 1px solid var(--glass-border);
+    transition: all var(--transition-speed);
+  }
+  
+  .ollama-node {
+    background: linear-gradient(135deg, rgba(0, 194, 255, 0.1), rgba(0, 194, 255, 0.2));
+    border-color: var(--neon-blue-transparent);
+    box-shadow: 0 0 10px var(--neon-blue-transparent);
+  }
+  
+  .groq-node {
+    background: linear-gradient(135deg, rgba(174, 0, 255, 0.1), rgba(174, 0, 255, 0.2));
+    border-color: var(--neon-purple-transparent);
+    box-shadow: 0 0 10px var(--neon-purple-transparent);
+  }
+  
+  /* Node states */
+  .node.selected {
+    border-color: var(--neon-blue);
+    box-shadow: 0 0 15px var(--neon-blue-dim);
+    animation: var(--glow-animation);
+  }
+  
+  .node.executed {
+    border-color: var(--success-color);
+    box-shadow: 0 0 10px var(--success-transparent);
+  }
+  
+  .node.error {
+    border-color: var(--error-color);
+    box-shadow: 0 0 10px var(--error-transparent);
+  }
+  
+  .node.processing {
+    animation: pulse 1.5s infinite;
+  }
+  
+  /* Edge styles */
+  .edge {
+    width: 2px;
+    opacity: 0.7;
+    transition: all var(--transition-speed);
+  }
+  
+  .edge-ollama {
+    line-color: var(--neon-blue-transparent);
+    target-arrow-color: var(--neon-blue-transparent);
+  }
+  
+  .edge-groq {
+    line-color: var(--neon-purple-transparent);
+    target-arrow-color: var(--neon-purple-transparent);
+  }
+  
+  .edge.active-path {
+    width: 3px;
+    opacity: 1;
+    animation: var(--pulse-animation);
+  }

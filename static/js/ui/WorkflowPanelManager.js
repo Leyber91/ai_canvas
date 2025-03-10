@@ -1,995 +1,797 @@
 /**
  * ui/WorkflowPanelManager.js
  *
- * Manages the workflow panel UI component.
- * Handles workflow execution visualization, status updates,
- * and user interactions with the workflow.
+ * Hypermodularized workflow panel manager that coordinates between the workflow panel
+ * and other UI components like the event bus, theme manager, and graph/workflow managers.
  */
+import { HypermodularWorkflowPanel } from './components/workflow/HypermodularWorkflowPanel.js';
+import { DOMHelper } from './helpers/domHelpers.js';
+
 export class WorkflowPanelManager {
     /**
      * @param {UIManager} uiManager - The parent UI manager
      */
     constructor(uiManager) {
+        // Core dependencies
         this.uiManager = uiManager;
         this.eventBus = uiManager.eventBus;
         this.workflowManager = uiManager.workflowManager;
         this.graphManager = uiManager.graphManager;
-
-        // DOM elements
-        this.container = null;
-        this.statusDisplay = null;
-        this.progressBar = null;
-        this.progressText = null;
-        this.executionStepsDisplay = null;
-        this.resultsDisplay = null;
-        this.errorsDisplay = null;
-        this.errorsContainer = null;
-
-        // State
-        this.isExecuting = false;
-        this.currentStep = 0;
-        this.executionSteps = [];
-        this.executionResults = {};
-        this.currentGraphInfo = null;
-    }
-
-/**
- * Initialize the workflow panel manager
- */
-initialize() {
-    // Execute after DOM is fully loaded
-    const initComponents = () => {
-        try {
-            // Create the workflow panel container
-            this.createWorkflowPanel();
-
-            // Find the workflow controls section to insert our panel
-            const workflowControls = document.querySelector('.workflow-controls');
-            if (!workflowControls) {
-                console.warn('Workflow controls container not found');
-                return;
-            }
-
-            // Insert the panel before any existing content
-            workflowControls.insertBefore(this.container, workflowControls.firstChild);
-
-            // Verify critical DOM elements are available
-            if (!this.executionStepsDisplay) console.warn('Execution steps display element not available');
-            if (!this.resultsDisplay) console.warn('Results display element not available');
-            if (!this.errorsDisplay) console.warn('Errors display element not available');
-
-            // Add event listeners for workflow events with safe execution wrappers
-            this.eventBus.subscribe('workflow:executing', (data) => this.safeExecute(() => this.handleWorkflowExecuting(data)));
-            this.eventBus.subscribe('workflow:node-executing', (data) => this.safeExecute(() => this.handleNodeExecuting(data)));
-            this.eventBus.subscribe('workflow:completed', (data) => this.safeExecute(() => this.handleWorkflowCompleted(data)));
-            this.eventBus.subscribe('workflow:failed', (data) => this.safeExecute(() => this.handleWorkflowFailed(data)));
-
-            console.log('Workflow Panel Manager initialized with event subscriptions');
-        } catch (error) {
-            console.error('Error initializing WorkflowPanelManager:', error);
-        }
-    };
-
-    // Ensure we initialize after DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initComponents);
-    } else {
-        // DOM already loaded, execute immediately
-        initComponents();
-    }
-}
-
-/**
- * Safely execute a function with error handling
- * 
- * @param {Function} fn - Function to execute
- * @param {any} fallback - Fallback value if execution fails
- * @returns {any} Result of function or fallback
- */
-safeExecute(fn, fallback = null) {
-    try {
-        return fn();
-    } catch (error) {
-        console.error('Error in WorkflowPanelManager function execution:', error);
-        return typeof fallback === 'function' ? fallback() : fallback;
-    }
-}
-
-    /**
-     * Handle workflow executing event
-     * @param {Object} data - Event data
-     */
-    handleWorkflowExecuting(data) {
-        console.log("Workflow execution started:", data);
+        this.themeManager = uiManager.themeManager;
         
-        try {
-            const { graphId } = data;
-            
-            // Update status display
-            this.updateStatus('Executing', 'executing');
-            
-            // Reset progress to 0%
-            this.updateProgress(0);
-            
-            // Update execution state
-            this.isExecuting = true;
-            
-            // Update buttons state
-            if (this.executeBtn) this.executeBtn.disabled = true;
-            if (this.stopBtn) this.stopBtn.disabled = false;
-            
-            // Clear any previous results
-            this.executionResults = {};
-            
-            // Clear any previous errors
-            if (this.errorsContainer) {
-                this.errorsContainer.classList.add('hidden');
-            }
-            
-            // Prepare the execution steps display
-            if (this.executionStepsDisplay) {
-                this.executionStepsDisplay.innerHTML = '<div class="loading">Executing workflow...</div>';
-            }
-            
-            // Prepare the results display
-            if (this.resultsDisplay) {
-                this.resultsDisplay.innerHTML = '<div class="empty-results">Execution in progress...</div>';
-            }
-        } catch (error) {
-            console.error("Error handling workflow execution start:", error);
-        }
+        // State
+        this.isInitialized = false;
+        this.containerElement = null;
+        this.panel = null;
+        this.executionTimeout = null;
+        
+        // Bind event handlers
+        this.handleExecute = this.handleExecute.bind(this);
+        this.handleStop = this.handleStop.bind(this);
+        this.handleValidate = this.handleValidate.bind(this);
+        this.handlePanelToggle = this.handlePanelToggle.bind(this);
+        this.handleHighlightCycles = this.handleHighlightCycles.bind(this);
+        this.handleBreakCycles = this.handleBreakCycles.bind(this);
+        
+        // Bind event bus handlers
+        this.handleWorkflowExecuting = this.handleWorkflowExecuting.bind(this);
+        this.handleNodeExecuting = this.handleNodeExecuting.bind(this);
+        this.handleNodeCompleted = this.handleNodeCompleted.bind(this);
+        this.handleNodeError = this.handleNodeError.bind(this);
+        this.handleWorkflowCompleted = this.handleWorkflowCompleted.bind(this);
+        this.handleWorkflowFailed = this.handleWorkflowFailed.bind(this);
     }
-
-    handleWorkflowCompleted(data) {
-        console.log("WorkflowPanelManager received completion event:", data);
-
-        try {
-            // Update status display
-            this.updateStatus('Completed', 'success');
-
-            // Update progress to 100%
-            this.updateProgress(100);
-
-            // Reset execution state
-            this.isExecuting = false;
-
-            // Update buttons state
-            if (this.executeBtn) this.executeBtn.disabled = false;
-            if (this.stopBtn) this.stopBtn.disabled = true;
-
-            // Extract execution order and results
-            let executionOrder = [];
-            if (data.executionOrder) {
-                executionOrder = data.executionOrder;
-            } else if (data.execution_order) {
-                executionOrder = data.execution_order;
-            }
-
-            // Extract results from the event data
-            const results = data.results || {};
-            this.executionResults = results;
-
-            // Update the execution plan display with actual execution order
-            this.updateExecutionPlanDisplay(executionOrder, results);
-
-            // Update the results display in the UI
-            this.updateResultsDisplay();
-        } catch (err) {
-            console.error("Error updating UI after workflow completion:", err);
-        }
-    }
-
+    
     /**
-     * Update the execution plan display with the actual execution order
-     *
-     * @param {Array} executionOrder - The order nodes were executed in
-     * @param {Object} results - The execution results by node ID
+     * Initialize the workflow panel manager
      */
-    updateExecutionPlanDisplay(executionOrder, results) {
-        try {
-            if (!this.executionStepsDisplay || !executionOrder || executionOrder.length === 0) {
-                return;
-            }
-
-            let stepsHtml = '<div class="execution-plan">';
-            stepsHtml += '<ol class="steps-list">';
-
-            // For each node in the execution order
-            executionOrder.forEach((nodeId, index) => {
-                if (!nodeId) return;
-
-                // Get node data if possible
-                const node = this.graphManager.getNodeData
-                    ? this.graphManager.getNodeData(nodeId)
-                    : null;
-                const nodeName = node ? (node.name || 'Unnamed Node') : `Node ${nodeId}`;
-                const nodeModel = node ? (node.model || 'No model') : 'Unknown';
-
-                // Determine status based on results
-                let status = 'success';
-                let statusText = 'Completed';
-
-                if (results && results[nodeId]) {
-                    const result = results[nodeId];
-                    if (typeof result === 'string' && result.startsWith('Error')) {
-                        status = 'error';
-                        statusText = 'Error';
-                    }
-                }
-
-                stepsHtml += `
-                    <li class="step-item" data-node-id="${nodeId}">
-                        <span class="step-number">${index + 1}</span>
-                        <span class="step-name">${nodeName}</span>
-                        <span class="step-model">${nodeModel}</span>
-                        <span class="step-status ${status}">${statusText}</span>
-                    </li>
-                `;
+    initialize() {
+        // Return early if already initialized
+        if (this.isInitialized) return;
+        
+        // Log initialization
+        console.log('Initializing WorkflowPanelManager');
+        
+        // Create or find container element
+        this.createContainerElement();
+        
+        // Initialize panel with theme-aware configuration
+        this.initializePanel();
+        
+        // Subscribe to events
+        this.subscribeToEvents();
+        
+        // Mark as initialized
+        this.isInitialized = true;
+        
+        console.log('WorkflowPanelManager initialized');
+    }
+    
+    /**
+     * Create or find the container element for the panel
+     */
+    createContainerElement() {
+        // Check if ThemeManager provides a container
+        if (this.themeManager && this.themeManager.elements && this.themeManager.elements.workflowPanelContainer) {
+            this.containerElement = this.themeManager.elements.workflowPanelContainer;
+            return;
+        }
+        
+        // Look for existing container in DOM
+        let container = document.querySelector('.workflow-panel-container');
+        
+        // Create container if not found
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'workflow-panel-container';
+            
+            // Position and style the container
+            Object.assign(container.style, {
+                position: 'fixed',
+                top: '60px',
+                right: '20px',
+                width: '350px',
+                maxHeight: 'calc(100vh - 80px)',
+                zIndex: '900',
+                overflowY: 'auto'
             });
-
-            stepsHtml += '</ol>';
-            stepsHtml += '</div>';
-
-            this.executionStepsDisplay.innerHTML = stepsHtml;
-
-            // Scroll to show the execution plan
-            if (this.executionStepsDisplay.scrollIntoView) {
-                this.executionStepsDisplay.scrollIntoView({ behavior: 'smooth' });
+            
+            // Find appropriate place to insert the container
+            const workflowControls = document.querySelector('.workflow-controls');
+            if (workflowControls) {
+                // Insert before workflow controls
+                workflowControls.parentNode.insertBefore(container, workflowControls);
+            } else {
+                // Append to body if no workflow controls found
+                document.body.appendChild(container);
             }
-        } catch (error) {
-            console.error('Error updating execution plan display:', error);
         }
+        
+        this.containerElement = container;
+        
+        // Apply custom scrollbar
+        DOMHelper.createCustomScrollbar(this.containerElement, {
+            width: '5px',
+            thumbColor: 'rgba(52, 152, 219, 0.5)',
+            thumbHoverColor: 'rgba(52, 152, 219, 0.8)'
+        });
     }
-
+    
     /**
-     * Create the workflow panel UI
+     * Initialize the workflow panel component
      */
-    createWorkflowPanel() {
-        try {
-            // Create container element
-            this.container = document.createElement('div');
-            this.container.className = 'workflow-panel';
-
-            // Set initial HTML content
-            this.container.innerHTML = `
-                <h3 class="panel-title">Workflow Execution</h3>
-
-                <div class="workflow-status">
-                    <div class="status-indicator waiting">
-                        <div class="status-dot"></div>
-                        <span class="status-text">Ready</span>
-                    </div>
-                </div>
-
-                <div class="execution-progress">
-                    <div class="progress-bar">
-                        <div class="progress-fill"></div>
-                    </div>
-                    <div class="progress-text">0%</div>
-                </div>
-
-                <div class="execution-steps">
-                    <h4>Execution Plan</h4>
-                    <div class="steps-container">
-                        <div class="empty-plan">Select or save a graph to enable workflow execution</div>
-                    </div>
-                </div>
-
-                <div class="execution-results">
-                    <h4>Results</h4>
-                    <div class="results-container">
-                        <div class="empty-results">No results yet</div>
-                    </div>
-                </div>
-
-                <div class="workflow-controls">
-                    <button class="execute-btn" disabled>Execute Workflow</button>
-                    <button class="stop-btn" disabled>Stop Execution</button>
-                    <button class="validate-btn">Validate Workflow</button>
-                </div>
-
-                <div class="workflow-errors hidden">
-                    <h4>Errors</h4>
-                    <div class="errors-container"></div>
-                </div>
-            `;
-
-            // Store references to elements
-            this.statusDisplay = this.container.querySelector('.status-indicator');
-            this.progressBar = this.container.querySelector('.progress-fill');
-            this.progressText = this.container.querySelector('.progress-text');
-            this.executionStepsDisplay = this.container.querySelector('.steps-container');
-            this.resultsDisplay = this.container.querySelector('.results-container');
-            this.errorsDisplay = this.container.querySelector('.errors-container');
-            this.errorsContainer = this.container.querySelector('.workflow-errors');
-
-            // Set up button event listeners
-            const executeBtn = this.container.querySelector('.execute-btn');
-            const stopBtn = this.container.querySelector('.stop-btn');
-            const validateBtn = this.container.querySelector('.validate-btn');
-
-            if (executeBtn) {
-                executeBtn.addEventListener('click', () => this.executeWorkflow());
-                this.executeBtn = executeBtn;
-            }
-
-            if (stopBtn) {
-                stopBtn.addEventListener('click', () => this.stopExecution());
-                this.stopBtn = stopBtn;
-            }
-
-            if (validateBtn) {
-                validateBtn.addEventListener('click', () => this.validateWorkflow());
-                this.validateBtn = validateBtn;
-            }
-
-            // Add emergency reset button
-            const resetButton = document.createElement('button');
-            resetButton.textContent = 'Force Reset';
-            // Instead of inline styles, we give it a CSS class:
-            resetButton.classList.add('reset-btn', 'hidden'); 
-            // (We'll toggle the 'hidden' class on/off in code.)
-
-            resetButton.addEventListener('click', () => {
-                // Force reset execution state
-                this.isExecuting = false;
-                this.updateStatus('Ready', 'waiting');
-                this.updateProgress(0);
-
-                // Reset UI
-                if (this.executeBtn) this.executeBtn.disabled = false;
-                if (this.stopBtn) this.stopBtn.disabled = true;
-
-                // Reset workflow manager state
-                if (this.workflowManager) {
-                    this.workflowManager.executionState.isExecuting = false;
-                }
-
-                // Hide the button again
-                resetButton.classList.add('hidden');
-            });
-
-            // Add to UI
-            const controlsContainer = this.container.querySelector('.workflow-controls');
-            if (controlsContainer) {
-                controlsContainer.appendChild(resetButton);
-            }
-
-            // Show reset button if execution takes too long
-            setTimeout(() => {
-                if (this.isExecuting) {
-                    resetButton.classList.remove('hidden');
-                }
-            }, 15000);
-
-            // (Removed addWorkflowPanelStyles() entirely – 
-            //  all styles now live in your external CSS files)
-        } catch (error) {
-            console.error('Error creating workflow panel:', error);
+    initializePanel() {
+        // Configure theme based on ThemeManager if available
+        const themeConfig = this.getThemeConfiguration();
+        
+        // Create the panel
+        this.panel = new HypermodularWorkflowPanel({
+            container: this.containerElement,
+            theme: themeConfig,
+            onExecute: this.handleExecute,
+            onStop: this.handleStop,
+            onValidate: this.handleValidate
+        });
+        
+        // Set initial expansion state from ThemeManager if available
+        const initialExpanded = this.themeManager && this.themeManager.state 
+            ? this.themeManager.state.workflowPanelExpanded 
+            : false;
+            
+        if (initialExpanded && !this.panel.state.expanded) {
+            this.panel.togglePanel();
+        }
+        
+        // Listen to panel events
+        this.panel.on('execute', this.handleExecute);
+        this.panel.on('stop', this.handleStop);
+        this.panel.on('validate', this.handleValidate);
+        this.panel.on('toggle', this.handlePanelToggle);
+        this.panel.on('highlight-cycles', this.handleHighlightCycles);
+        this.panel.on('break-cycles', this.handleBreakCycles);
+        this.panel.on('reset', this.handleReset.bind(this));
+        
+        // If we have a current graph, update panel with graph info
+        const currentGraphId = this.graphManager ? this.graphManager.getCurrentGraphId() : null;
+        if (currentGraphId) {
+            const graphData = this.graphManager.getCurrentGraphData 
+                ? this.graphManager.getCurrentGraphData() 
+                : { id: currentGraphId, name: 'Current Graph' };
+            
+            this.panel.updateGraphInfo(graphData);
         }
     }
-
-    // Removed the entire addWorkflowPanelStyles() method here,
-    // since all styles should live in external CSS.
-
+    
     /**
-     * Update the status display
-     * @param {string} status - The status text
-     * @param {string} statusClass - The CSS class for styling
+     * Get theme configuration from ThemeManager or use defaults
+     * 
+     * @returns {Object} Theme configuration
      */
-    updateStatus(status, statusClass) {
-        try {
-            if (!this.statusDisplay) return;
-
-            // Remove all status classes
-            this.statusDisplay.classList.remove('waiting', 'executing', 'success', 'error');
-
-            // Add the new status class
-            this.statusDisplay.classList.add(statusClass);
-
-            // Update the status text
-            const statusText = this.statusDisplay.querySelector('.status-text');
-            if (statusText) {
-                statusText.textContent = status;
-            }
-        } catch (error) {
-            console.error('Error updating status:', error);
+    getThemeConfiguration() {
+        // Default theme
+        const defaultTheme = {
+            dark: true,
+            accentColor: '#3498db',
+            errorColor: '#e74c3c',
+            successColor: '#2ecc71',
+            warningColor: '#f39c12',
+            backgroundColor: 'rgba(18, 22, 36, 0.7)',
+            textColor: '#ffffff'
+        };
+        
+        // Use ThemeManager if available
+        if (this.themeManager && this.themeManager.state) {
+            const { state } = this.themeManager;
+            
+            return {
+                dark: state.isDarkTheme !== false,
+                accentColor: state.accentColor || defaultTheme.accentColor,
+                errorColor: state.errorColor || defaultTheme.errorColor,
+                successColor: state.successColor || defaultTheme.successColor,
+                warningColor: state.warningColor || defaultTheme.warningColor,
+                backgroundColor: state.panelBackgroundColor || defaultTheme.backgroundColor,
+                textColor: state.textColor || defaultTheme.textColor
+            };
         }
+        
+        return defaultTheme;
     }
-
+    
     /**
-     * Update the progress display
-     * @param {number} percent - The progress percentage (0-100)
+     * Subscribe to workflow-related events
      */
-    updateProgress(percent) {
-        try {
-            if (!this.progressBar || !this.progressText) return;
-
-            const clampedPercent = Math.max(0, Math.min(100, percent));
-            this.progressBar.style.width = `${clampedPercent}%`;
-            this.progressText.textContent = `${Math.round(clampedPercent)}%`;
-        } catch (error) {
-            console.error('Error updating progress:', error);
-        }
+    subscribeToEvents() {
+        // Workflow execution events
+        this.eventBus.subscribe('workflow:executing', this.handleWorkflowExecuting);
+        this.eventBus.subscribe('workflow:node-executing', this.handleNodeExecuting);
+        this.eventBus.subscribe('workflow:node-completed', this.handleNodeCompleted);
+        this.eventBus.subscribe('workflow:node-error', this.handleNodeError);
+        this.eventBus.subscribe('workflow:completed', this.handleWorkflowCompleted);
+        this.eventBus.subscribe('workflow:failed', this.handleWorkflowFailed);
+        this.eventBus.subscribe('workflow:stopped', this.handleWorkflowStopped.bind(this));
+        
+        // Graph events
+        this.eventBus.subscribe('graph:loaded', this.handleGraphLoaded.bind(this));
+        this.eventBus.subscribe('graph:saved', this.handleGraphSaved.bind(this));
+        this.eventBus.subscribe('graph:cleared', this.handleGraphCleared.bind(this));
+        this.eventBus.subscribe('graph:current-changed', this.handleGraphChanged.bind(this));
     }
-
+    
+    /**
+     * Toggle workflow panel expansion
+     */
+    togglePanel() {
+        if (!this.panel) return;
+        
+        this.panel.togglePanel();
+    }
+    
+    /**
+     * Check if the panel is expanded
+     * 
+     * @returns {boolean} Whether the panel is expanded
+     */
+    isExpanded() {
+        return this.panel ? this.panel.state.expanded : false;
+    }
+    
     /**
      * Execute the workflow
      */
     async executeWorkflow() {
-        if (this.isExecuting) return;
-
-        this.isExecuting = true;
-        this.updateStatus('Executing', 'executing');
-
+        if (!this.panel || !this.workflowManager) return;
+        
+        // Check if a workflow is already executing
+        if (this.workflowManager.executionState?.isExecuting) {
+            this.panel.showError('A workflow is already running. Please wait for it to complete or stop it first.');
+            return;
+        }
+        
+        // Update UI state
+        this.panel.handleWorkflowExecuting();
+        
         try {
-            // Get the current graph ID from multiple possible sources
+            // Get current graph ID
             const graphId = this.workflowManager.currentGraphId ||
-                            this.graphManager.getCurrentGraphId() ||
-                            localStorage.getItem('aiCanvas_lastGraphId');
-
-            console.log("Attempting to execute workflow with graph ID:", graphId);
-
+                           this.graphManager.getCurrentGraphId() ||
+                           localStorage.getItem('aiCanvas_lastGraphId');
+            
             if (!graphId) {
-                this.showError('No graph selected. Please save the graph first.');
-                this.isExecuting = false;
-                this.updateStatus('Error', 'error');
+                this.panel.showError('No graph selected. Please save the graph first.');
+                this.panel.resetExecutionState();
                 return;
             }
-
-            // Clear previous execution data
-            this.executionSteps = [];
-            this.executionResults = {};
-            this.currentStep = 0;
-
-            // Update the UI
-            this.executionStepsDisplay.innerHTML = '<div class="loading">Analyzing workflow...</div>';
-            this.resultsDisplay.innerHTML = '';
-            this.updateProgress(0);
-
-            // Validate the workflow first
-            const validation = this.workflowManager.validateWorkflow
-                ? this.workflowManager.validateWorkflow()
-                : { success: false, errors: ['Cannot validate workflow'] };
-
-            if (!validation.success) {
-                this.showValidationErrors(validation);
-                this.isExecuting = false;
-                this.updateStatus('Error', 'error');
+            
+            // Validate workflow before execution
+            const canExecute = await this.validateWorkflow(true);
+            
+            if (!canExecute) {
+                this.panel.resetExecutionState();
                 return;
             }
-
-            // Enable stop button, disable execute button
-            this.updateExecutionControls(true);
-
-            // Execute the workflow
-            const result = await this.workflowManager.executeWorkflow(graphId);
-
-            // Store execution results for later use
-            if (result && result.results) {
-                this.executionResults = result.results;
+            
+            console.log(`Executing workflow for graph ${graphId}`);
+            
+            // Add a timeout to prevent execution hanging indefinitely
+            const executionPromise = this.workflowManager.executeWorkflow(graphId);
+            
+            // Create a timeout promise
+            this.clearExecutionTimeout();
+            const timeoutPromise = new Promise((_, reject) => {
+                this.executionTimeout = setTimeout(() => {
+                    reject(new Error('Workflow execution timed out after 60 seconds'));
+                }, 60000);
+            });
+            
+            // Race the execution against the timeout
+            const result = await Promise.race([executionPromise, timeoutPromise]);
+            
+            // Clear the timeout since execution completed
+            this.clearExecutionTimeout();
+            
+            // Handle result formatting differences
+            if (result && (result.results || result.executionResults)) {
+                // Some implementations use different property names
+                const results = result.results || result.executionResults || {};
+                const executionOrder = result.executionOrder || result.execution_order || [];
+                
+                // Pass to panel for display
+                this.panel.handleWorkflowCompleted({
+                    results,
+                    executionOrder
+                });
             }
-
         } catch (error) {
-            console.error('Workflow execution error:', error);
-            this.showError(`Error executing workflow: ${error.message || 'Unknown error'}`);
-            this.updateStatus('Error', 'error');
-
-            // Reset button states
-            this.updateExecutionControls(false);
-        } finally {
-            this.isExecuting = false;
+            console.error('Error executing workflow:', error);
+            
+            // Clear timeout if it exists
+            this.clearExecutionTimeout();
+            
+            // Provide more helpful error messages based on the error type
+            let errorMessage = error.message || 'Unknown error during execution';
+            
+            if (errorMessage.includes('already being executed')) {
+                errorMessage = 'A workflow is already running. Please wait for it to complete or stop it first.';
+            } else if (errorMessage.includes('timed out')) {
+                errorMessage = 'Workflow execution timed out. The operation may still be running but is taking longer than expected.';
+            }
+            
+            this.panel.handleWorkflowFailed({
+                error: errorMessage
+            });
         }
     }
-
+    
     /**
-     * Stop the current execution
+     * Clear the execution timeout
+     */
+    clearExecutionTimeout() {
+        if (this.executionTimeout) {
+            clearTimeout(this.executionTimeout);
+            this.executionTimeout = null;
+        }
+    }
+    
+    /**
+     * Stop the execution
      */
     stopExecution() {
-        try {
-            if (!this.isExecuting) return;
-
-            if (this.workflowManager.stopExecution) {
-                this.workflowManager.stopExecution();
+        if (!this.panel || !this.workflowManager) return;
+        
+        // Clear any timeouts
+        this.clearExecutionTimeout();
+        
+        console.log('Stopping workflow execution');
+        
+        // Call workflowManager's stop method if it exists
+        if (typeof this.workflowManager.stopExecution === 'function') {
+            this.workflowManager.stopExecution();
+        } else if (this.workflowManager.executionEngine?.stopExecution) {
+            this.workflowManager.executionEngine.stopExecution();
+        } else {
+            // Fallback - just reset the executing flag
+            if (this.workflowManager.executionState) {
+                this.workflowManager.executionState.isExecuting = false;
             }
-
-            this.isExecuting = false;
-            this.updateStatus('Stopped', 'waiting');
-
-            // Reset button states
-            this.updateExecutionControls(false);
-        } catch (error) {
-            console.error('Error stopping execution:', error);
+            
+            // Publish event
+            this.eventBus.publish('workflow:stopped', {
+                timestamp: Date.now()
+            });
         }
+        
+        // Update UI
+        this.panel.resetExecutionState();
+        this.panel.updateStatus('Stopped', 'waiting');
     }
-
+    
     /**
-     * Update execution control buttons
-     *
-     * @param {boolean} isExecuting - Whether workflow is executing
+     * Validate the workflow
+     * 
+     * @param {boolean} silent - Whether to show validation results
+     * @returns {boolean} Whether validation was successful
      */
-    updateExecutionControls(isExecuting) {
-        try {
-            if (this.executeBtn) {
-                this.executeBtn.disabled = isExecuting;
-            }
-            if (this.stopBtn) {
-                this.stopBtn.disabled = !isExecuting;
-            }
-        } catch (error) {
-            console.error('Error updating execution controls:', error);
+    async validateWorkflow(silent = false) {
+        if (!this.panel || !this.workflowManager) return false;
+        
+        // Update UI for validation
+        if (!silent) {
+            this.panel.updateStatus('Validating', 'executing');
         }
-    }
-
-    /**
-     * Validate the workflow without executing it
-     */
-    async validateWorkflow() {
+        
         try {
-            this.updateStatus('Validating', 'executing');
-
-            // Check if executionStepsDisplay exists before trying to use it
-            if (!this.executionStepsDisplay) {
-                console.warn('Execution steps display element not found in DOM');
-                return false;
-            }
-
-            // Check if validateWorkflow method exists
-            if (!this.workflowManager || !this.workflowManager.validateWorkflow) {
-                this.showError('Validation method not available');
-                return false;
-            }
-
-            const validation = this.workflowManager.validateWorkflow();
-
-            if (validation.success) {
-                this.updateStatus('Valid', 'success');
+            // Check which validation function is available
+            let validation;
+            
+            if (typeof this.workflowManager.validateWorkflow === 'function') {
+                validation = await this.workflowManager.validateWorkflow();
+            } else if (typeof this.workflowManager.validate === 'function') {
+                validation = await this.workflowManager.validate();
+            } else {
+                // If no validation method is available, check for cycles
+                validation = { 
+                    success: true, 
+                    errors: [],
+                    hasCycles: false,
+                    cycles: []
+                };
                 
-                // Safe check before setting innerHTML
-                if (this.executionStepsDisplay) {
-                    this.executionStepsDisplay.innerHTML =
-                        '<div class="validation-success">Workflow is valid and ready to execute</div>';
+                // Check for cycles if the method exists
+                if (typeof this.workflowManager.detectCycles === 'function') {
+                    const cycles = await this.workflowManager.detectCycles();
+                    validation.hasCycles = cycles && cycles.length > 0;
+                    validation.cycles = cycles || [];
+                    
+                    if (validation.hasCycles) {
+                        validation.success = false;
+                        validation.errors = ['Workflow contains cycles that may prevent execution'];
+                    }
                 }
-
-                // Show the execution plan
-                this.showExecutionPlan();
-
-                // Hide any previous errors
-                if (this.errorsContainer) {
-                    this.errorsContainer.classList.add('hidden');
+            }
+            
+            // Handle validation results
+            if (validation.success) {
+                if (!silent) {
+                    this.panel.updateStatus('Valid', 'success');
+                    
+                    // Get execution order if available
+                    let executionOrder = [];
+                    if (typeof this.workflowManager.getExecutionOrder === 'function') {
+                        executionOrder = this.workflowManager.getExecutionOrder();
+                    } else if (typeof this.workflowManager.computeTopologicalSort === 'function') {
+                        executionOrder = this.workflowManager.computeTopologicalSort();
+                    } else if (this.workflowManager.executionOrder) {
+                        executionOrder = this.workflowManager.executionOrder;
+                    }
+                    
+                    // Show execution plan
+                    const nodeDataMap = this.getNodeDataMap();
+                    this.panel.showExecutionPlan(executionOrder, nodeDataMap);
+                    
+                    // Hide any previous errors
+                    if (this.panel.elements.errorsContainer) {
+                        this.panel.elements.errorsContainer.classList.add('hidden');
+                    }
                 }
                 
                 return true;
             } else {
-                this.showValidationErrors(validation);
+                if (!silent) {
+                    this.panel.showValidationErrors(validation);
+                }
+                
                 return false;
             }
         } catch (error) {
-            console.error('Validation error:', error);
-            this.showError(`Error validating workflow: ${error.message || 'Unknown error'}`);
+            console.error('Error validating workflow:', error);
+            
+            if (!silent) {
+                this.panel.showError(`Error validating workflow: ${error.message || 'Unknown error'}`);
+            }
+            
             return false;
         }
     }
-
+    
     /**
-     * Show validation errors
-     * @param {Object} validation - The validation result
+     * Get a map of node IDs to node data
+     * 
+     * @returns {Object} Map of node ID to node data
      */
-    showValidationErrors(validation) {
+    getNodeDataMap() {
+        const nodeDataMap = {};
+        
+        if (!this.graphManager) return nodeDataMap;
+        
+        // Get all nodes in the graph
+        let nodes = [];
+        
         try {
-            if (!validation) return;
-
-            this.updateStatus('Invalid', 'error');
-
-            let errorsHtml = '<div class="validation-errors">';
-            if (Array.isArray(validation.errors)) {
-                validation.errors.forEach((error) => {
-                    errorsHtml += `<div class="error-item">${error}</div>`;
-                });
-            } else if (validation.errors) {
-                errorsHtml += `<div class="error-item">${validation.errors}</div>`;
+            if (typeof this.graphManager.getAllNodes === 'function') {
+                nodes = this.graphManager.getAllNodes();
+            } else if (this.graphManager.cy) {
+                // If we have direct access to Cytoscape
+                nodes = this.graphManager.cy.nodes().map(node => node.data());
+            } else if (Array.isArray(this.graphManager.nodes)) {
+                // Direct access to nodes array
+                nodes = this.graphManager.nodes;
             }
-            errorsHtml += '</div>';
-
-            if (validation.hasCycles && validation.cycles) {
-                errorsHtml += '<div class="cycles-warning">';
-                errorsHtml += '<h4>Cycles Detected</h4>';
-                errorsHtml += '<p>This workflow contains cycles which may prevent sequential execution:</p>';
-                errorsHtml += '<ul>';
-
-                // Safe handling of cycles data
-                if (Array.isArray(validation.cycles)) {
-                    validation.cycles.forEach((cycle) => {
-                        if (Array.isArray(cycle)) {
-                            errorsHtml += `<li>${cycle.join(' → ')}</li>`;
-                        }
-                    });
-                }
-
-                errorsHtml += '</ul>';
-                errorsHtml += '<button class="highlight-cycles-btn">Highlight Cycles</button>';
-                errorsHtml += '<button class="break-cycles-btn">Break Cycles</button>';
-                errorsHtml += '</div>';
-            }
-
-            if (this.errorsContainer) {
-                this.errorsContainer.classList.remove('hidden');
-            }
-
-            if (this.errorsDisplay) {
-                this.errorsDisplay.innerHTML = errorsHtml;
-
-                // Add event listeners to the cycle buttons
-                const highlightBtn = this.errorsDisplay.querySelector('.highlight-cycles-btn');
-                const breakBtn = this.errorsDisplay.querySelector('.break-cycles-btn');
-
-                if (highlightBtn) {
-                    highlightBtn.addEventListener('click', () => {
-                        if (this.workflowManager.highlightCycles) {
-                            this.workflowManager.highlightCycles();
-                        }
-                    });
-                }
-
-                if (breakBtn) {
-                    breakBtn.addEventListener('click', () => {
-                        if (this.workflowManager.breakCycles) {
-                            this.workflowManager.breakCycles();
-                        }
-                    });
-                }
-            }
-        } catch (error) {
-            console.error('Error showing validation errors:', error);
-        }
-    }
-
-    /**
-     * Show the execution plan
-     * @param {Array} executionOrder - Optional execution order to display
-     */
-    showExecutionPlan(executionOrder = null) {
-        try {
-            // If no execution order was provided, try to get it from the workflow manager
-            if (!executionOrder) {
-                if (typeof this.workflowManager.getExecutionOrder === 'function') {
-                    executionOrder = this.workflowManager.getExecutionOrder();
-                } else if (typeof this.workflowManager.computeTopologicalSort === 'function') {
-                    executionOrder = this.workflowManager.computeTopologicalSort();
-                } else if (this.workflowManager.executionOrder) {
-                    executionOrder = this.workflowManager.executionOrder;
-                }
-            }
-
-            // Ensure executionOrder is an array
-            if (!Array.isArray(executionOrder)) {
-                console.warn('Execution order is not an array, initializing as empty array');
-                executionOrder = [];
-            }
-
-            if (executionOrder.length === 0) {
-                this.executionStepsDisplay.innerHTML =
-                    '<div class="empty-plan">No execution steps available</div>';
-                return;
-            }
-
-            let stepsHtml = '<div class="execution-plan">';
-            stepsHtml += '<ol class="steps-list">';
-
-            executionOrder.forEach((nodeId, index) => {
-                if (!nodeId) return;
-
-                const node = this.graphManager.getNodeData
-                    ? this.graphManager.getNodeData(nodeId)
-                    : null;
-                if (node) {
-                    stepsHtml += `
-                        <li class="step-item" data-node-id="${nodeId}">
-                            <span class="step-number">${index + 1}</span>
-                            <span class="step-name">${node.name || 'Unnamed Node'}</span>
-                            <span class="step-model">${node.model || 'No model'}</span>
-                            <span class="step-status pending">Pending</span>
-                        </li>
-                    `;
-                } else {
-                    stepsHtml += `
-                        <li class="step-item" data-node-id="${nodeId}">
-                            <span class="step-number">${index + 1}</span>
-                            <span class="step-name">Node ${nodeId}</span>
-                            <span class="step-model">Unknown</span>
-                            <span class="step-status pending">Pending</span>
-                        </li>
-                    `;
-                }
-            });
-
-            stepsHtml += '</ol>';
-            stepsHtml += '</div>';
-
-            if (this.executionStepsDisplay) {
-                this.executionStepsDisplay.innerHTML = stepsHtml;
-            }
-        } catch (error) {
-            console.error('Error showing execution plan:', error);
-            if (this.executionStepsDisplay) {
-                this.executionStepsDisplay.innerHTML =
-                    '<div class="error-message">Error generating execution plan</div>';
-            }
-        }
-    }
-
-    /**
-     * Show an error message
-     * @param {string} message - The error message
-     */
-    showError(message) {
-        try {
-            if (this.errorsContainer) {
-                this.errorsContainer.classList.remove('hidden');
-            }
-
-            if (this.errorsDisplay) {
-                this.errorsDisplay.innerHTML = `<div class="error-message">${message}</div>`;
-            }
-
-            this.updateStatus('Error', 'error');
-        } catch (error) {
-            console.error('Error showing error message:', error);
-        }
-    }
-
-    /**
-     * Update the results display
-     */
-    updateResultsDisplay() {
-        try {
-            if (!this.resultsDisplay) return;
-
-            // Generate HTML for the results
-            let resultsHtml = '';
-
-            Object.entries(this.executionResults).forEach(([nodeId, result]) => {
-                if (!nodeId || !result) return;
-
-                const node = this.graphManager.getNodeData
-                    ? this.graphManager.getNodeData(nodeId)
-                    : null;
-                const nodeName = node ? (node.name || nodeId) : nodeId;
-                const resultString = typeof result === 'string' ? result : JSON.stringify(result);
-                const isError = resultString.startsWith('Error');
-
-                resultsHtml += `<div class="result-item ${isError ? 'error' : ''}" data-node-id="${nodeId}">`;
-                resultsHtml += `<h5>${nodeName}</h5>`;
-
-                // Limit the result length for display
-                const displayResult =
-                    resultString.length > 300
-                        ? resultString.substring(0, 300) + '...'
-                        : resultString;
-
-                resultsHtml += `<pre class="result-content">${displayResult}</pre>`;
-
-                if (resultString.length > 300) {
-                    resultsHtml += `<button class="show-full-result-btn" data-node-id="${nodeId}">Show Full Result</button>`;
-                }
-
-                resultsHtml += '</div>';
-            });
-
-            if (resultsHtml === '') {
-                resultsHtml = '<div class="empty-results">No results yet</div>';
-            }
-
-            this.resultsDisplay.innerHTML = resultsHtml;
-
-            // Add event listeners to the show full result buttons
-            const showButtons = this.resultsDisplay.querySelectorAll('.show-full-result-btn');
-
-            showButtons.forEach((button) => {
-                button.addEventListener('click', () => {
-                    const nodeId = button.getAttribute('data-node-id');
-                    if (nodeId && this.executionResults[nodeId]) {
-                        this.showResultModal(nodeId, this.executionResults[nodeId]);
-                    }
-                });
-            });
-        } catch (error) {
-            console.error('Error updating results display:', error);
-        }
-    }
-
-    /**
-     * Show a modal with the full result
-     * @param {string} nodeId - The node ID
-     * @param {string} result - The full result
-     */
-    showResultModal(nodeId, result) {
-        try {
-            // Get the node name
-            const node = this.graphManager.getNodeData
-                ? this.graphManager.getNodeData(nodeId)
-                : null;
-            const nodeName = node ? (node.name || nodeId) : nodeId;
-            const resultString = typeof result === 'string' ? result : JSON.stringify(result);
-
-            // Create the modal
-            const modal = document.createElement('div');
-            modal.classList.add('result-modal');
-
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <span class="close-btn">&times;</span>
-                    <h3>Result for ${nodeName}</h3>
-                    <pre class="full-result">${resultString}</pre>
-                </div>
-            `;
-
-            // Add the modal to the document
-            document.body.appendChild(modal);
-
-            // Add event listener to close button
-            const closeBtn = modal.querySelector('.close-btn');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => {
-                    document.body.removeChild(modal);
-                });
-            }
-
-            // Close when clicking outside the modal content
-            modal.addEventListener('click', (event) => {
-                if (event.target === modal) {
-                    document.body.removeChild(modal);
+            
+            // Build the map
+            nodes.forEach(node => {
+                if (node && node.id) {
+                    nodeDataMap[node.id] = node;
                 }
             });
         } catch (error) {
-            console.error('Error showing result modal:', error);
+            console.error('Error building node data map:', error);
         }
+        
+        return nodeDataMap;
     }
-
+    
     /**
-     * Update graph information in the panel
-     *
-     * @param {Object} graphData - Graph data
+     * Handle execute button click
      */
-    updateGraphInfo(graphData) {
-        try {
-            this.currentGraphInfo = graphData;
-
-            // Enable execute button if we have a valid graph
-            if (this.executeBtn && graphData && graphData.id) {
-                this.executeBtn.disabled = false;
-            }
-
-            // Clear any previous errors
-            if (this.errorsContainer) {
-                this.errorsContainer.classList.add('hidden');
-            }
-
-            // Update the execution plan
-            this.validateWorkflow();
-        } catch (error) {
-            console.error('Error updating graph info:', error);
-        }
+    handleExecute() {
+        this.executeWorkflow();
     }
-
+    
     /**
-     * Reset the workflow panel
+     * Handle stop button click
      */
-    resetPanel() {
-        try {
-            this.currentGraphInfo = null;
-            this.executionResults = {};
-            this.executionSteps = [];
-
-            // Reset UI elements
-            this.updateStatus('Ready', 'waiting');
-            this.updateProgress(0);
-
-            if (this.executionStepsDisplay) {
-                this.executionStepsDisplay.innerHTML =
-                    '<div class="empty-plan">Select or save a graph to enable workflow execution</div>';
-            }
-
-            if (this.resultsDisplay) {
-                this.resultsDisplay.innerHTML = '<div class="empty-results">No results yet</div>';
-            }
-
-            if (this.errorsContainer) {
-                this.errorsContainer.classList.add('hidden');
-            }
-
-            // Disable execution controls
-            if (this.executeBtn) {
-                this.executeBtn.disabled = true;
-            }
-
-            if (this.stopBtn) {
-                this.stopBtn.disabled = true;
-            }
-        } catch (error) {
-            console.error('Error resetting panel:', error);
-        }
+    handleStop() {
+        this.stopExecution();
     }
-
+    
     /**
-     * Handle workflow failed event
+     * Handle validate button click
+     */
+    handleValidate() {
+        this.validateWorkflow();
+    }
+    
+    /**
+     * Handle reset button click
+     */
+    handleReset() {
+        // Stop execution first
+        this.stopExecution();
+        
+        // Force reset the execution state
+        if (this.workflowManager && this.workflowManager.resetExecutionState) {
+            try {
+                this.workflowManager.resetExecutionState();
+            } catch (error) {
+                console.warn('Error resetting workflow execution state:', error);
+            }
+        }
+        
+        // Reset the panel
+        this.panel.resetExecutionState();
+        
+        // Clear any execution styling in the graph
+        if (this.graphManager && this.graphManager.clearWorkflowVisualization) {
+            try {
+                this.graphManager.clearWorkflowVisualization();
+            } catch (error) {
+                console.warn('Error clearing workflow visualization:', error);
+            }
+        }
+        
+        console.log('Workflow execution reset');
+    }
+    
+    /**
+     * Handle panel toggle event
+     * 
+     * @param {Object} data - Toggle event data
+     * @param {boolean} data.expanded - Whether panel is expanded
+     */
+    handlePanelToggle(data) {
+        // Update ThemeManager state if available
+        if (this.themeManager && this.themeManager.state) {
+            this.themeManager.state.workflowPanelExpanded = data.expanded;
+            
+            // Use ThemeManager's toggle method if available
+            if (typeof this.themeManager.toggleWorkflowPanel === 'function') {
+                this.themeManager.toggleWorkflowPanel();
+            }
+        }
+        
+        // Publish event
+        this.eventBus.publish('workflow:panel-toggled', data);
+    }
+    
+    /**
+     * Handle highlight cycles button click
+     * 
+     * @param {Object} data - Event data
+     * @param {Array} data.cycles - Array of cycles to highlight
+     */
+    handleHighlightCycles(data) {
+        if (!this.workflowManager) return;
+        
+        // Call corresponding method if it exists
+        if (typeof this.workflowManager.highlightCycles === 'function') {
+            this.workflowManager.highlightCycles(data.cycles);
+        } else if (this.graphManager && typeof this.graphManager.highlightCycles === 'function') {
+            this.graphManager.highlightCycles(data.cycles);
+        }
+        
+        // Publish event
+        this.eventBus.publish('workflow:cycles-highlighted', {
+            cycles: data.cycles
+        });
+    }
+    
+    /**
+     * Handle break cycles button click
+     * 
+     * @param {Object} data - Event data
+     * @param {Array} data.cycles - Array of cycles to break
+     */
+    handleBreakCycles(data) {
+        if (!this.workflowManager) return;
+        
+        // Call corresponding method if it exists
+        if (typeof this.workflowManager.breakCycles === 'function') {
+            this.workflowManager.breakCycles(data.cycles);
+        }
+        
+        // Publish event
+        this.eventBus.publish('workflow:cycles-broken', {
+            cycles: data.cycles
+        });
+    }
+    
+    /**
+     * Handle workflow executing event
+     * 
      * @param {Object} data - Event data
      */
-    handleWorkflowFailed(data) {
-        try {
-            console.error("Workflow execution failed:", data.error);
-            
-            // Update status display
-            this.updateStatus('Failed', 'error');
-            
-            // Reset execution state
-            this.isExecuting = false;
-            
-            // Update buttons state
-            if (this.executeBtn) this.executeBtn.disabled = false;
-            if (this.stopBtn) this.stopBtn.disabled = true;
-            
-            // Show error message
-            this.showError(data.error || 'Unknown error during workflow execution');
-        } catch (error) {
-            console.error("Error handling workflow failure:", error);
-        }
+    handleWorkflowExecuting(data) {
+        if (!this.panel) return;
+        
+        // Pass to panel for UI updates
+        this.panel.handleWorkflowExecuting(data);
     }
-
+    
     /**
      * Handle node executing event
+     * 
      * @param {Object} data - Event data
      */
     handleNodeExecuting(data) {
-        try {
-            const { nodeId, iteration, totalNodes, progress } = data;
-
-            // Ensure progress is a number and clamp it to valid range
-            const safeProgress =
-                typeof progress === 'number'
-                    ? Math.max(0, Math.min(100, progress * 100))
-                    : 0;
-
-            console.log(`Updating progress for node ${nodeId}: ${safeProgress}%`);
-
-            // Update the progress bar
-            this.updateProgress(safeProgress);
-
-            // Find the step item for this node
-            const stepItem = this.executionStepsDisplay?.querySelector(`[data-node-id="${nodeId}"]`);
-
-            // If we don't have a step item for this node yet, we may need to create the execution plan
-            if (!stepItem && this.workflowManager && this.graphManager) {
-                // Try to get execution order from the workflow manager
-                let executionOrder = [];
-                if (typeof this.workflowManager.getExecutionOrder === 'function') {
-                    executionOrder = this.workflowManager.getExecutionOrder();
-                } else if (typeof this.workflowManager.computeTopologicalSort === 'function') {
-                    executionOrder = this.workflowManager.computeTopologicalSort();
-                }
-
-                if (executionOrder && executionOrder.length > 0) {
-                    this.showExecutionPlan(executionOrder);
-                }
-            }
-
-            // Update the step status in the execution plan
-            const updatedStepItem = this.executionStepsDisplay?.querySelector(`[data-node-id="${nodeId}"]`);
-            if (updatedStepItem) {
-                const statusSpan = updatedStepItem.querySelector('.step-status');
-                if (statusSpan) {
-                    statusSpan.textContent = 'Executing';
-                    statusSpan.className = 'step-status executing';
-                }
-
-                // Scroll to the current step
-                updatedStepItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }
-        } catch (error) {
-            console.error('Error in handleNodeExecuting:', error);
-        }
+        if (!this.panel) return;
+        
+        // Pass to panel for UI updates
+        this.panel.handleNodeExecuting(data);
     }
-
-
     
+    /**
+     * Handle node completed event
+     * 
+     * @param {Object} data - Event data
+     */
+    handleNodeCompleted(data) {
+        if (!this.panel) return;
+        
+        // Pass to panel for UI updates
+        this.panel.handleNodeCompleted(data);
+    }
+    
+    /**
+     * Handle node error event
+     * 
+     * @param {Object} data - Event data
+     */
+    handleNodeError(data) {
+        if (!this.panel) return;
+        
+        // Pass to panel for UI updates
+        this.panel.handleNodeError(data);
+    }
+    
+    /**
+     * Handle workflow completed event
+     * 
+     * @param {Object} data - Event data
+     */
+    handleWorkflowCompleted(data) {
+        if (!this.panel) return;
+        
+        // Clear any timeouts
+        this.clearExecutionTimeout();
+        
+        // Pass to panel for UI updates
+        this.panel.handleWorkflowCompleted(data);
+    }
+    
+    /**
+     * Handle workflow failed event
+     * 
+     * @param {Object} data - Event data
+     */
+    handleWorkflowFailed(data) {
+        if (!this.panel) return;
+        
+        // Clear any timeouts
+        this.clearExecutionTimeout();
+        
+        // Pass to panel for UI updates
+        this.panel.handleWorkflowFailed(data);
+    }
+    
+    /**
+     * Handle workflow stopped event
+     * 
+     * @param {Object} data - Event data
+     */
+    handleWorkflowStopped(data) {
+        if (!this.panel) return;
+        
+        // Clear any timeouts
+        this.clearExecutionTimeout();
+        
+        // Reset UI state
+        this.panel.resetExecutionState();
+        this.panel.updateStatus('Stopped', 'waiting');
+    }
+    
+    /**
+     * Handle graph loaded event
+     * 
+     * @param {Object} graphData - Graph data
+     */
+    handleGraphLoaded(graphData) {
+        if (!this.panel) return;
+        
+        // Update panel with graph info
+        this.panel.updateGraphInfo(graphData);
+    }
+    
+    /**
+     * Handle graph saved event
+     * 
+     * @param {Object} graphData - Graph data
+     */
+    handleGraphSaved(graphData) {
+        if (!this.panel) return;
+        
+        // Update panel with graph info
+        this.panel.updateGraphInfo(graphData);
+    }
+    
+    /**
+     * Handle graph cleared event
+     */
+    handleGraphCleared() {
+        if (!this.panel) return;
+        
+        // Reset panel
+        this.panel.resetPanel();
+    }
+    
+    /**
+     * Handle graph changed event
+     * 
+     * @param {Object} graphData - Graph data
+     */
+    handleGraphChanged(graphData) {
+        if (!this.panel) return;
+        
+        // Update panel with graph info
+        this.panel.updateGraphInfo(graphData);
+    }
+    
+    /**
+     * Update graph information in the panel
+     * 
+     * @param {Object} graphData - Graph data
+     */
+    updateGraphInfo(graphData) {
+        if (!this.panel) return;
+        
+        this.panel.updateGraphInfo(graphData);
+    }
+    
+    /**
+     * Reset the panel
+     */
+    resetPanel() {
+        if (!this.panel) return;
+        
+        this.panel.resetPanel();
+    }
+    
+    /**
+     * Clean up resources on destroy
+     */
+    destroy() {
+        // Clear any timeouts
+        this.clearExecutionTimeout();
+        
+        // Unsubscribe from all events
+        if (this.eventBus) {
+            this.eventBus.unsubscribe('workflow:executing', this.handleWorkflowExecuting);
+            this.eventBus.unsubscribe('workflow:node-executing', this.handleNodeExecuting);
+            this.eventBus.unsubscribe('workflow:node-completed', this.handleNodeCompleted);
+            this.eventBus.unsubscribe('workflow:node-error', this.handleNodeError);
+            this.eventBus.unsubscribe('workflow:completed', this.handleWorkflowCompleted);
+            this.eventBus.unsubscribe('workflow:failed', this.handleWorkflowFailed);
+            this.eventBus.unsubscribe('workflow:stopped', this.handleWorkflowStopped);
+            this.eventBus.unsubscribe('graph:loaded', this.handleGraphLoaded);
+            this.eventBus.unsubscribe('graph:saved', this.handleGraphSaved);
+            this.eventBus.unsubscribe('graph:cleared', this.handleGraphCleared);
+            this.eventBus.unsubscribe('graph:current-changed', this.handleGraphChanged);
+        }
+        
+        // Clean up panel if it has a destroy method
+        if (this.panel && typeof this.panel.destroy === 'function') {
+            this.panel.destroy();
+        }
+        
+        this.panel = null;
+    }
 }

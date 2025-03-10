@@ -2,13 +2,18 @@
  * ui/ConversationPanelManager.js
  * 
  * Manages the conversation panel for interacting with AI nodes.
+ * Enhanced with ThemeManager integration for consistent styling.
  */
+import { FormatHelpers } from './helpers/formatHelpers.js';
+
 export class ConversationPanelManager {
     /**
      * @param {UIManager} uiManager - The parent UI manager
      */
     constructor(uiManager) {
       this.uiManager = uiManager;
+      this.themeManager = uiManager.themeManager;
+      this.collapsed = false;
     }
     
     /**
@@ -17,6 +22,30 @@ export class ConversationPanelManager {
     initialize() {
       // Set up event listeners
       this.setupEventListeners();
+      
+      // Apply theme styles if ThemeManager is available
+      this.applyThemeStyles();
+    }
+    
+    /**
+     * Apply theme styles from ThemeManager
+     */
+    applyThemeStyles() {
+      if (!this.themeManager) return;
+      
+      const conversationPanel = document.getElementById('conversation-panel');
+      if (conversationPanel) {
+        // Apply glassmorphism effect if supported by ThemeManager
+        if (this.themeManager.state) {
+          this.collapsed = this.themeManager.state.conversationPanelCollapsed;
+          
+          if (this.collapsed) {
+            conversationPanel.classList.add('collapsed');
+          } else {
+            conversationPanel.classList.remove('collapsed');
+          }
+        }
+      }
     }
     
     /**
@@ -39,6 +68,43 @@ export class ConversationPanelManager {
           }
         });
       }
+      
+      // Panel toggle button
+      const panelToggle = document.getElementById('panel-toggle');
+      if (panelToggle) {
+        panelToggle.addEventListener('click', () => this.togglePanel());
+      }
+    }
+    
+    /**
+     * Toggle conversation panel collapse/expand
+     */
+    togglePanel() {
+      const conversationPanel = document.getElementById('conversation-panel');
+      if (!conversationPanel) return;
+      
+      this.collapsed = !this.collapsed;
+      
+      if (this.collapsed) {
+        conversationPanel.classList.add('collapsed');
+      } else {
+        conversationPanel.classList.remove('collapsed');
+      }
+      
+      // Update ThemeManager state if available
+      if (this.themeManager && this.themeManager.state) {
+        this.themeManager.state.conversationPanelCollapsed = this.collapsed;
+      }
+      
+      // Use ThemeManager's toggle method if available
+      if (this.themeManager && typeof this.themeManager.toggleConversationPanel === 'function') {
+        this.themeManager.toggleConversationPanel();
+      }
+      
+      // Publish event for other components
+      this.uiManager.eventBus.publish('conversation:panel-toggled', {
+        collapsed: this.collapsed
+      });
     }
     
     /**
@@ -50,11 +116,17 @@ export class ConversationPanelManager {
       // Enable chat input
       if (elements.chatInput) {
         elements.chatInput.disabled = false;
+        elements.chatInput.placeholder = "Type your message here...";
       }
       
       // Enable send button
       if (elements.sendBtn) {
         elements.sendBtn.disabled = false;
+      }
+      
+      // If panel is collapsed, expand it
+      if (this.collapsed) {
+        this.togglePanel();
       }
     }
     
@@ -67,6 +139,7 @@ export class ConversationPanelManager {
       // Disable chat input
       if (elements.chatInput) {
         elements.chatInput.disabled = true;
+        elements.chatInput.placeholder = "Select a node to chat with...";
       }
       
       // Disable send button
@@ -103,8 +176,26 @@ export class ConversationPanelManager {
       // Clear the input
       elements.chatInput.value = '';
       
+      // Add user message to UI
+      this.addMessageToUI('user', messageText);
+      
+      // Show typing indicator
+      const typingIndicator = this.showTypingIndicator();
+      
       // Send the message
-      conversationManager.sendMessage(messageText);
+      conversationManager.sendMessage(messageText, nodeId, (response) => {
+        // Remove typing indicator
+        if (typingIndicator && typingIndicator.parentNode) {
+          typingIndicator.parentNode.removeChild(typingIndicator);
+        }
+        
+        // Add assistant response to UI
+        if (response && response.content) {
+          this.addMessageToUI('assistant', response.content);
+        } else {
+          this.addMessageToUI('system', 'Error: No response received.');
+        }
+      });
     }
     
     /**
@@ -114,6 +205,17 @@ export class ConversationPanelManager {
      * @returns {string} Formatted content with Markdown-like formatting
      */
     formatMessage(content) {
+      // Use theme manager's format helper if available
+      if (this.themeManager && typeof this.themeManager.formatMessageContent === 'function') {
+        return this.themeManager.formatMessageContent(content);
+      }
+      
+      // Or use FormatHelpers if available
+      if (FormatHelpers && typeof FormatHelpers.formatMessageContent === 'function') {
+        return FormatHelpers.formatMessageContent(content);
+      }
+      
+      // Fallback to basic formatting
       return content
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')  // Bold
         .replace(/\*(.*?)\*/g, '<em>$1</em>')              // Italic

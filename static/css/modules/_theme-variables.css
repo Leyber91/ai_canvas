@@ -1,0 +1,51 @@
+/* 
+  _theme-variables.css
+  Defines the color scheme and visual variables for the space sci-fi glassmorphic theme
+*/
+
+:root {
+  /* Base colors */
+  --space-bg-primary: #070b14;
+  --space-bg-secondary: #0e1525;
+  --space-surface: rgba(22, 28, 45, 0.8);
+  
+  /* Accent colors */
+  --neon-blue: #00c2ff;
+  --neon-blue-dim: rgba(0, 194, 255, 0.5);
+  --neon-blue-transparent: rgba(0, 194, 255, 0.3);
+  --neon-purple: #ae00ff;
+  --neon-purple-transparent: rgba(174, 0, 255, 0.3);
+  --neon-teal: #00ffd5;
+  --neon-teal-transparent: rgba(0, 255, 213, 0.3);
+  
+  /* Functional colors */
+  --success-color: #00ff9d;
+  --success-transparent: rgba(0, 255, 157, 0.3);
+  --error-color: #ff3377;
+  --error-transparent: rgba(255, 51, 119, 0.3);
+  --warning-color: #ffbb00;
+  --warning-transparent: rgba(255, 187, 0, 0.3);
+  
+  /* Glassmorphism */
+  --glass-bg: rgba(18, 22, 36, 0.6);
+  --glass-border: rgba(80, 120, 240, 0.3);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --glass-blur: 8px;
+  
+  /* Text */
+  --text-primary: #ffffff;
+  --text-secondary: #b3c5ef;
+  --text-muted: #6b88b5;
+  
+  /* Transitions */
+  --transition-speed: 0.3s;
+  
+  /* Node types */
+  --ollama-node-color: var(--neon-blue);
+  --groq-node-color: var(--neon-purple);
+  
+  /* Sizes */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+}
