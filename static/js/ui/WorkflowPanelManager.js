@@ -4,23 +4,30 @@
  * Hypermodularized workflow panel manager that coordinates between the workflow panel
  * and other UI components like the event bus, theme manager, and graph/workflow managers.
  */
-import { HypermodularWorkflowPanel } from './components/workflow/HypermodularWorkflowPanel.js';
+import { BasePanelManager } from './panel/BasePanelManager.js';
+import { HypermodularWorkflowPanel } from './theme/panels/HypermodularWorkflowPanel.js';
 import { DOMHelper } from './helpers/domHelpers.js';
 
-export class WorkflowPanelManager {
+export class WorkflowPanelManager extends BasePanelManager {
     /**
      * @param {UIManager} uiManager - The parent UI manager
      */
     constructor(uiManager) {
+        super({
+            uiManager,
+            panelType: 'workflow',
+            eventPrefix: 'workflow',
+            // Initialize expanded state from theme if available
+            initialExpanded: uiManager.themeManager && uiManager.themeManager.state 
+                ? uiManager.themeManager.state.workflowPanelExpanded 
+                : false
+        });
+        
         // Core dependencies
-        this.uiManager = uiManager;
-        this.eventBus = uiManager.eventBus;
         this.workflowManager = uiManager.workflowManager;
         this.graphManager = uiManager.graphManager;
-        this.themeManager = uiManager.themeManager;
         
         // State
-        this.isInitialized = false;
         this.containerElement = null;
         this.panel = null;
         this.executionTimeout = null;
@@ -47,7 +54,7 @@ export class WorkflowPanelManager {
      */
     initialize() {
         // Return early if already initialized
-        if (this.isInitialized) return;
+        if (this.initialized) return;
         
         // Log initialization
         console.log('Initializing WorkflowPanelManager');
@@ -61,8 +68,8 @@ export class WorkflowPanelManager {
         // Subscribe to events
         this.subscribeToEvents();
         
-        // Mark as initialized
-        this.isInitialized = true;
+        // Call base initialization
+        super.initialize();
         
         console.log('WorkflowPanelManager initialized');
     }
@@ -133,12 +140,8 @@ export class WorkflowPanelManager {
             onValidate: this.handleValidate
         });
         
-        // Set initial expansion state from ThemeManager if available
-        const initialExpanded = this.themeManager && this.themeManager.state 
-            ? this.themeManager.state.workflowPanelExpanded 
-            : false;
-            
-        if (initialExpanded && !this.panel.state.expanded) {
+        // Set initial expansion state using the base class state
+        if (this.expanded && !this.panel.state.expanded) {
             this.panel.togglePanel();
         }
         
@@ -218,21 +221,37 @@ export class WorkflowPanelManager {
     }
     
     /**
-     * Toggle workflow panel expansion
+     * Override togglePanel to handle the panel component
      */
     togglePanel() {
         if (!this.panel) return;
         
+        // Toggle the panel component
         this.panel.togglePanel();
+        
+        // Update base class state
+        this.expanded = this.panel.state.expanded;
+        
+        // Publish event and update theme state
+        this.publishToggleEvent();
+        this.updateThemeState();
     }
     
     /**
-     * Check if the panel is expanded
+     * Override isExpanded to use panel component state
      * 
      * @returns {boolean} Whether the panel is expanded
      */
     isExpanded() {
-        return this.panel ? this.panel.state.expanded : false;
+        return this.panel ? this.panel.state.expanded : this.expanded;
+    }
+    
+    /**
+     * Legacy method for backward compatibility
+     * @deprecated Use togglePanel() instead
+     */
+    toggleWorkflowPanel() {
+        this.togglePanel();
     }
     
     /**
@@ -543,24 +562,18 @@ export class WorkflowPanelManager {
     }
     
     /**
-     * Handle panel toggle event
+     * Handle panel toggle event from the panel component
      * 
      * @param {Object} data - Toggle event data
      * @param {boolean} data.expanded - Whether panel is expanded
      */
     handlePanelToggle(data) {
-        // Update ThemeManager state if available
-        if (this.themeManager && this.themeManager.state) {
-            this.themeManager.state.workflowPanelExpanded = data.expanded;
-            
-            // Use ThemeManager's toggle method if available
-            if (typeof this.themeManager.toggleWorkflowPanel === 'function') {
-                this.themeManager.toggleWorkflowPanel();
-            }
-        }
+        // Update base class state
+        this.expanded = data.expanded;
         
-        // Publish event
-        this.eventBus.publish('workflow:panel-toggled', data);
+        // Publish event and update theme state
+        this.publishToggleEvent();
+        this.updateThemeState();
     }
     
     /**
@@ -793,5 +806,8 @@ export class WorkflowPanelManager {
         }
         
         this.panel = null;
+        
+        // Call base destroy
+        super.destroy();
     }
 }

@@ -1,14 +1,22 @@
 /**
- * core/EventBus.js
+ * core/EnhancedEventBus.js
  * 
- * An enhanced pub/sub event bus that allows components to communicate
- * without direct dependencies, with improved debugging and error recovery.
+ * An improved event bus with better error handling, performance tracking,
+ * and integration with the ErrorHandler and EventBusService.
  */
+import { EventBusService } from './services/EventBusService.js';
+
 export class EventBus {
-    constructor() {
+    /**
+     * Create a new enhanced event bus
+     * 
+     * @param {ErrorHandler} errorHandler - Error handler for event errors
+     */
+    constructor(errorHandler = null) {
       this.subscribers = {};
       this.debugMode = false;
-      this.warningMode = true; // Always warn about critical issues
+      this.warningMode = true;
+      this.errorHandler = errorHandler;
       
       // Event history for debugging
       this.eventHistory = [];
@@ -20,6 +28,15 @@ export class EventBus {
         delivered: {},
         errors: {}
       };
+      
+      // Performance tracking
+      this.performanceStats = {};
+      this.trackPerformance = false;
+      
+      // Bind methods
+      this.subscribe = this.subscribe.bind(this);
+      this.publish = this.publish.bind(this);
+      this.unsubscribe = this.unsubscribe.bind(this);
     }
     
     /**
@@ -41,8 +58,11 @@ export class EventBus {
         return () => {}; // Return no-op unsubscribe function
       }
       
-      if (!this.subscribers[event]) {
-        this.subscribers[event] = [];
+      // Map legacy event names to standardized ones
+      const standardEvent = EventBusService.getLegacyEventMapping(event);
+      
+      if (!this.subscribers[standardEvent]) {
+        this.subscribers[standardEvent] = [];
       }
       
       const subscriber = { 
@@ -52,19 +72,68 @@ export class EventBus {
         id: Math.random().toString(36).substring(2, 11) // Generate unique ID for this subscription
       };
       
-      this.subscribers[event].push(subscriber);
+      this.subscribers[standardEvent].push(subscriber);
       
       if (this.debugMode) {
-        console.log(`[EventBus] Subscribed to "${event}" (total subscribers: ${this.subscribers[event].length})`);
+        console.log(`[EventBus] Subscribed to "${standardEvent}" (total subscribers: ${this.subscribers[standardEvent].length})`);
       }
       
       // Return unsubscribe function
       return () => {
-        this.subscribers[event] = this.subscribers[event].filter(s => s !== subscriber);
+        this.unsubscribe(standardEvent, subscriber);
+      };
+    }
+    
+    /**
+     * Unsubscribe a specific subscriber
+     * 
+     * @param {string} event - Event name
+     * @param {Object} subscriber - Subscriber object
+     */
+    unsubscribe(event, subscriber) {
+      if (!this.subscribers[event]) return;
+      
+      const index = this.subscribers[event].indexOf(subscriber);
+      if (index !== -1) {
+        this.subscribers[event].splice(index, 1);
+        
         if (this.debugMode) {
           console.log(`[EventBus] Unsubscribed from "${event}" (remaining subscribers: ${this.subscribers[event].length})`);
         }
+        
+        // Clean up empty subscriber arrays
+        if (this.subscribers[event].length === 0) {
+          delete this.subscribers[event];
+        }
+      }
+    }
+    
+    /**
+     * Subscribe to an event once
+     * 
+     * @param {string} event - Event name to subscribe to
+     * @param {Function} callback - Function to call when event is published
+     * @param {Object} context - Context to bind the callback to (this value)
+     * @returns {Function} Unsubscribe function
+     */
+    subscribeOnce(event, callback, context = null) {
+      if (!event || typeof event !== 'string' || !callback || typeof callback !== 'function') {
+        return () => {}; // Return no-op unsubscribe function
+      }
+      
+      // Map legacy event names to standardized ones
+      const standardEvent = EventBusService.getLegacyEventMapping(event);
+      
+      // Create a wrapper that unsubscribes after first call
+      const wrapperCallback = (data) => {
+        unsubscribe(); // Unsubscribe first to prevent recursion issues
+        callback.call(context, data);
       };
+      
+      // Subscribe and get unsubscribe function
+      const unsubscribe = this.subscribe(standardEvent, wrapperCallback, context);
+      
+      return unsubscribe;
     }
     
     /**
@@ -75,21 +144,29 @@ export class EventBus {
      * @returns {boolean} Whether the event was delivered to any subscribers
      */
     publish(event, data = null) {
+      const startTime = this.trackPerformance ? performance.now() : null;
+      
+      // Map legacy event names to standardized ones
+      const standardEvent = EventBusService.getLegacyEventMapping(event);
+      
       // Track event publication
-      this.eventStats.published[event] = (this.eventStats.published[event] || 0) + 1;
+      this.eventStats.published[standardEvent] = (this.eventStats.published[standardEvent] || 0) + 1;
       
       // Always log workflow events
-      const isWorkflowEvent = event.startsWith('workflow:');
-      if (isWorkflowEvent || this.debugMode) {
-        console.log(`[EventBus] Publishing event: ${event}`, data);
+      const isWorkflowEvent = standardEvent.startsWith('workflow:');
+      const isDebugEvent = standardEvent.startsWith('debug:');
+      
+      if ((isWorkflowEvent && !isDebugEvent) || this.debugMode) {
+        console.log(`[EventBus] Publishing event: ${standardEvent}`, data);
       }
       
       // Add to history
       this.eventHistory.unshift({
         timestamp: new Date(),
-        event,
+        event: standardEvent,
+        originalEvent: event !== standardEvent ? event : undefined,
         data,
-        subscriberCount: this.subscribers[event]?.length || 0
+        subscriberCount: this.subscribers[standardEvent]?.length || 0
       });
       
       // Trim history if needed
@@ -98,21 +175,24 @@ export class EventBus {
       }
       
       // Check if there are subscribers
-      if (!this.subscribers[event] || this.subscribers[event].length === 0) {
-        if (this.warningMode && isWorkflowEvent) {
-          console.warn(`[EventBus] No subscribers for workflow event: ${event}`);
+      if (!this.subscribers[standardEvent] || this.subscribers[standardEvent].length === 0) {
+        if (this.warningMode && isWorkflowEvent && !isDebugEvent) {
+          console.warn(`[EventBus] No subscribers for workflow event: ${standardEvent}`);
         }
         return false;
       }
       
       // Track delivery statistics
-      this.eventStats.delivered[event] = (this.eventStats.delivered[event] || 0) + 1;
+      this.eventStats.delivered[standardEvent] = (this.eventStats.delivered[standardEvent] || 0) + 1;
       
       // Call each subscriber with error isolation
-      const subscriberCount = this.subscribers[event].length;
+      const subscriberCount = this.subscribers[standardEvent].length;
       let successCount = 0;
       
-      this.subscribers[event].forEach((subscriber, index) => {
+      // Create a safe copy of subscribers to prevent modification during iteration
+      const currentSubscribers = [...this.subscribers[standardEvent]];
+      
+      currentSubscribers.forEach((subscriber, index) => {
         try {
           // Execute the callback in the proper context
           if (subscriber.context) {
@@ -124,27 +204,63 @@ export class EventBus {
           successCount++;
           
           if (this.debugMode) {
-            console.log(`[EventBus] Delivered "${event}" to subscriber ${index+1}/${subscriberCount}`);
+            console.log(`[EventBus] Delivered "${standardEvent}" to subscriber ${index+1}/${subscriberCount}`);
           }
         } catch (error) {
           // Track error statistics
-          this.eventStats.errors[event] = (this.eventStats.errors[event] || 0) + 1;
+          this.eventStats.errors[standardEvent] = (this.eventStats.errors[standardEvent] || 0) + 1;
           
           // Provide detailed error information
           console.error(
-            `[EventBus] Error in subscriber ${index+1}/${subscriberCount} for event "${event}":`, 
-            error,
-            '\nSubscriber:', subscriber,
-            '\nEvent data:', data
+            `[EventBus] Error in subscriber ${index+1}/${subscriberCount} for event "${standardEvent}":`, 
+            error
           );
           
+          // Use error handler if available
+          if (this.errorHandler) {
+            this.errorHandler.handleError(error, {
+              context: `EventBus:${standardEvent}`,
+              silent: true, // Don't show UI notifications for event errors
+              source: 'eventBus',
+              data: {
+                event: standardEvent,
+                eventData: data,
+                subscriberIndex: index
+              }
+            });
+          }
+          
           // For critical workflow events, try to handle the error
-          if (isWorkflowEvent && event.includes('completed')) {
+          if (isWorkflowEvent && standardEvent.includes('completed')) {
             console.warn('[EventBus] Critical workflow event delivery failed - attempting recovery');
-            this.attemptErrorRecovery(event, data);
+            this.attemptErrorRecovery(standardEvent, data);
           }
         }
       });
+      
+      // Track performance if enabled
+      if (this.trackPerformance && startTime !== null) {
+        const endTime = performance.now();
+        const duration = endTime - startTime;
+        
+        if (!this.performanceStats[standardEvent]) {
+          this.performanceStats[standardEvent] = {
+            count: 0,
+            totalDuration: 0,
+            maxDuration: 0
+          };
+        }
+        
+        const stats = this.performanceStats[standardEvent];
+        stats.count++;
+        stats.totalDuration += duration;
+        stats.maxDuration = Math.max(stats.maxDuration, duration);
+        
+        // Log slow events
+        if (duration > 50) {
+          console.warn(`[EventBus] Slow event "${standardEvent}" took ${duration.toFixed(2)}ms with ${subscriberCount} subscribers`);
+        }
+      }
       
       // Return delivery success rate
       return successCount > 0;
@@ -164,6 +280,12 @@ export class EventBus {
           if (window.workflowManager) {
             window.workflowManager.executionState.isExecuting = false;
             console.log('[EventBus] Successfully reset workflow execution state');
+            
+            // Publish recovery event
+            this.publish('error:recovered', {
+              event,
+              message: 'Successfully reset workflow execution state'
+            });
           }
         } catch (e) {
           console.error('[EventBus] Recovery attempt failed:', e);
@@ -182,6 +304,16 @@ export class EventBus {
     }
     
     /**
+     * Set performance tracking on/off
+     * 
+     * @param {boolean} enabled - Whether performance tracking should be enabled
+     */
+    setPerformanceTracking(enabled) {
+      this.trackPerformance = enabled;
+      console.log(`[EventBus] Performance tracking ${enabled ? 'enabled' : 'disabled'}`);
+    }
+    
+    /**
      * Set warning mode on/off
      * 
      * @param {boolean} enabled - Whether warning mode should be enabled
@@ -197,10 +329,14 @@ export class EventBus {
      */
     clearSubscribers(event) {
       if (event) {
-        const count = this.subscribers[event]?.length || 0;
-        delete this.subscribers[event];
+        // Map legacy event names to standardized ones
+        const standardEvent = EventBusService.getLegacyEventMapping(event);
+        
+        const count = this.subscribers[standardEvent]?.length || 0;
+        delete this.subscribers[standardEvent];
+        
         if (this.debugMode) {
-          console.log(`[EventBus] Cleared ${count} subscribers for event "${event}"`);
+          console.log(`[EventBus] Cleared ${count} subscribers for event "${standardEvent}"`);
         }
       } else {
         this.subscribers = {};
@@ -226,6 +362,39 @@ export class EventBus {
      */
     getEventStats() {
       return this.eventStats;
+    }
+    
+    /**
+     * Get performance statistics
+     * 
+     * @returns {Object} Performance statistics
+     */
+    getPerformanceStats() {
+      if (!this.trackPerformance) {
+        return { message: 'Performance tracking is disabled' };
+      }
+      
+      // Calculate averages and sort by average duration
+      const events = Object.keys(this.performanceStats).map(event => {
+        const stats = this.performanceStats[event];
+        const averageDuration = stats.count > 0 ? stats.totalDuration / stats.count : 0;
+        
+        return {
+          event,
+          count: stats.count,
+          averageDuration,
+          maxDuration: stats.maxDuration
+        };
+      });
+      
+      // Sort by average duration (slowest first)
+      events.sort((a, b) => b.averageDuration - a.averageDuration);
+      
+      return {
+        totalEvents: events.length,
+        slowestEvents: events.slice(0, 10),
+        allEvents: events
+      };
     }
     
     /**
@@ -258,7 +427,24 @@ export class EventBus {
           errors: this.eventStats.errors[event] || 0,
           errorRate: this.eventStats.published[event] ? 
             this.eventStats.errors[event] / this.eventStats.published[event] : 0
-        }))
+        })),
+        performance: this.trackPerformance ? this.getPerformanceStats() : null
       };
     }
-  }
+    
+    /**
+     * Reset all statistics
+     */
+    resetStats() {
+      this.eventStats = {
+        published: {},
+        delivered: {},
+        errors: {}
+      };
+      
+      this.performanceStats = {};
+      this.eventHistory = [];
+      
+      console.log('[EventBus] Statistics reset');
+    }
+}

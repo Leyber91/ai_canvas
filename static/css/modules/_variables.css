@@ -1,0 +1,145 @@
+/* 
+ * _variables.css
+ * Core Space Sci-Fi Theme Variables for AI Canvas
+ */
+
+:root {
+  /* Base Colors */
+  --space-black: #060818;
+  --space-dark: #0f1630;
+  --space-blue: #121f45;
+  --space-navy: #172550;
+  --space-purple: #1e1045;
+  
+  /* Accent Colors */
+  --neon-blue: #00c2ff;
+  --neon-purple: #ae00ff;
+  --neon-pink: #ff3377;
+  --neon-teal: #00ffd8;
+  --neon-green: #5dff00;
+  
+  /* UI Colors */
+  --text-primary: rgba(255, 255, 255, 0.95);
+  --text-secondary: rgba(221, 235, 255, 0.85);
+  --text-tertiary: rgba(170, 200, 255, 0.7);
+  --text-muted: rgba(130, 160, 210, 0.6);
+  
+  /* Gradients */
+  --gradient-blue: linear-gradient(45deg, var(--neon-blue), #2c6dd5);
+  --gradient-purple: linear-gradient(45deg, var(--neon-purple), #6c4bb4);
+  --gradient-cosmos: linear-gradient(180deg, var(--space-blue), var(--space-purple));
+  --gradient-accent: linear-gradient(45deg, var(--neon-blue), var(--neon-purple));
+  
+  /* Glass Effects */
+  --glass-bg: rgba(18, 22, 36, 0.6);
+  --glass-border: rgba(80, 120, 240, 0.25);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --glass-blur: 8px;
+  
+  /* Panels & Containers */
+  --panel-bg: rgba(18, 22, 36, 0.8);
+  --panel-border: rgba(80, 120, 240, 0.3);
+  --panel-glow: 0 0 15px rgba(0, 194, 255, 0.2);
+  --card-bg: rgba(23, 32, 55, 0.6);
+  
+  /* Status Colors */
+  --success-color: #27c98f;
+  --warning-color: #ffb545;
+  --error-color: #ff5a65;
+  --info-color: #2e85ff;
+  
+  /* Animation */
+  --transition-speed: 0.3s;
+  --pulse-animation: pulse 2s infinite;
+  
+  /* Borders */
+  --border-radius-sm: 6px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-width: 1px;
+  
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --glow-blue: 0 0 15px rgba(0, 194, 255, 0.5);
+  --glow-purple: 0 0 15px rgba(174, 0, 255, 0.5);
+  
+  /* Z-indices */
+  --z-background: -10;
+  --z-base: 1;
+  --z-above: 10;
+  --z-modal: 100;
+  --z-tooltip: 200;
+  --z-notification: 300;
+  
+  /* Dimensions */
+  --header-height: 60px;
+  --sidebar-width: 280px;
+  --workflow-panel-width: 320px;
+  --workflow-panel-collapsed-width: 80px;
+  --conversation-panel-width: 400px;
+  --conversation-panel-collapsed-width: 60px;
+  
+  /* Execution Animation */
+  --node-pulse-color: var(--neon-blue);
+  --node-executing-color: var(--neon-teal);
+  --node-completed-color: var(--neon-green);
+  --node-error-color: var(--neon-pink);
+  
+  /* Space Elements */
+  --star-color-1: rgba(255, 255, 255, 0.8);
+  --star-color-2: rgba(210, 230, 255, 0.7);
+  --star-color-3: rgba(180, 215, 255, 0.7);
+  --nebula-color-1: rgba(0, 194, 255, 0.05);
+  --nebula-color-2: rgba(174, 0, 255, 0.05);
+  --nebula-color-3: rgba(255, 51, 119, 0.05);
+}
+
+/* Dark Theme Overrides (default) */
+.theme-dark {
+  --body-bg: var(--space-black);
+  --panel-bg: rgba(18, 22, 36, 0.8);
+  --card-bg: rgba(23, 32, 55, 0.6);
+}
+
+/* Animations */
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(0, 194, 255, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(0, 194, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 194, 255, 0); }
+}
+
+@keyframes glow {
+  0% { filter: brightness(0.8) drop-shadow(0 0 5px rgba(0, 194, 255, 0.3)); }
+  50% { filter: brightness(1.2) drop-shadow(0 0 15px rgba(0, 194, 255, 0.6)); }
+  100% { filter: brightness(0.8) drop-shadow(0 0 5px rgba(0, 194, 255, 0.3)); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+@keyframes nebulaPulse {
+  0%, 100% { opacity: 0.05; filter: blur(80px); }
+  50% { opacity: 0.1; filter: blur(70px); }
+}
+
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+/* Responsive Breakpoints - for use with media queries */
+:root {
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+}

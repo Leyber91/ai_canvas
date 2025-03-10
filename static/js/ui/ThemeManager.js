@@ -10,7 +10,7 @@ import { DOMElementFinder } from './theme/utils/DOMElementFinder.js';
 import { EventListenerSetup } from './theme/events/EventListenerSetup.js';
 import { SpaceBackground } from './theme/background/SpaceBackground.js';
 import { UIAnimations } from './theme/animations/UIAnimations.js';
-import { WorkflowPanelManager } from './theme/panels/WorkflowPanelManager.js';
+import { WorkflowPanelManager } from './WorkflowPanelManager.js';
 import { ConversationPanelManager } from './theme/panels/ConversationPanelManager.js';
 import { NodeChatDialogManager } from './theme/chat/NodeChatDialogManager.js';
 import { CytoscapeThemeManager } from './theme/cytoscape/CytoscapeThemeManager.js';
@@ -66,7 +66,7 @@ export class ThemeManager {
     
     // Initialize sub-managers that need DOM elements
     this.eventSetup = new EventListenerSetup(this, this.elements, this.eventBus);
-    this.workflowPanelManager = new WorkflowPanelManager(this.elements, this.eventBus);
+    this.workflowPanelManager = new WorkflowPanelManager(this);
     this.conversationPanelManager = new ConversationPanelManager(this.elements, this.eventBus);
     this.nodeChatManager = new NodeChatDialogManager(this, this.elements, this.eventBus);
     this.executionUIManager = new ExecutionUIManager(this, this.elements, this.eventBus);
@@ -132,33 +132,33 @@ export class ThemeManager {
     }
   }
   
-  /**
-   * Toggle workflow panel expansion
-   */
-  toggleWorkflowPanel() {
+/**
+ * Toggle workflow panel expansion
+ */
+toggleWorkflowPanel() {
     if (!this.workflowPanelManager) return;
     
     try {
-      this.workflowPanelManager.toggleWorkflowPanel();
-      this.state.workflowPanelExpanded = this.workflowPanelManager.isExpanded();
+        this.workflowPanelManager.togglePanel();
+        this.state.workflowPanelExpanded = this.workflowPanelManager.isExpanded();
     } catch (error) {
-      console.error('Error toggling workflow panel:', error);
+        console.error('Error toggling workflow panel:', error);
     }
-  }
-  
-  /**
-   * Toggle conversation panel collapse
-   */
-  toggleConversationPanel() {
+}
+
+/**
+ * Toggle conversation panel collapse
+ */
+toggleConversationPanel() {
     if (!this.conversationPanelManager) return;
     
     try {
-      this.conversationPanelManager.toggleConversationPanel();
-      this.state.conversationPanelCollapsed = this.conversationPanelManager.isCollapsed();
+        this.conversationPanelManager.togglePanel();
+        this.state.conversationPanelCollapsed = this.conversationPanelManager.isCollapsed();
     } catch (error) {
-      console.error('Error toggling conversation panel:', error);
+        console.error('Error toggling conversation panel:', error);
     }
-  }
+}
   
   /**
    * Show node chat dialog
@@ -268,7 +268,7 @@ export class ThemeManager {
     
     // If conversation panel is collapsed, expand it
     if (this.state.conversationPanelCollapsed && this.conversationPanelManager) {
-      this.toggleConversationPanel();
+        this.conversationPanelManager.expandPanel();
     }
     
     // Apply selected styling to the node
@@ -328,8 +328,8 @@ export class ThemeManager {
     }
     
     // If workflow panel is not expanded, expand it
-    if (!this.state.workflowPanelExpanded) {
-      this.toggleWorkflowPanel();
+    if (!this.state.workflowPanelExpanded && this.workflowPanelManager) {
+        this.workflowPanelManager.expandPanel();
     }
     
     // Apply executing animation to the node
@@ -439,8 +439,8 @@ export class ThemeManager {
     }
     
     // Expand workflow panel
-    if (!this.state.workflowPanelExpanded) {
-      this.toggleWorkflowPanel();
+    if (!this.state.workflowPanelExpanded && this.workflowPanelManager) {
+        this.workflowPanelManager.expandPanel();
     }
     
     // Update execution UI
