@@ -1,10 +1,14 @@
 /**
  * ui/ThemeManager.js
  * 
+ * Compatibility wrapper around ThemeService
+ * Maintains the same API but uses new theme system
+ * 
  * Manages the space-inspired dark theme and UI enhancements for AI Canvas.
  * Coordinates various theme modules for animations, UI elements, and theme features.
  */
 
+import { themeService } from '../core/theme/ThemeService.js';
 import { themeState } from './theme/themeState.js';
 import { DOMElementFinder } from './theme/utils/DOMElementFinder.js';
 import { EventListenerSetup } from './theme/events/EventListenerSetup.js';
@@ -24,6 +28,9 @@ export class ThemeManager {
   constructor(uiManager) {
     this.uiManager = uiManager;
     this.eventBus = uiManager.eventBus;
+    
+    // Initialize theme service
+    themeService.eventBus = this.eventBus;
     
     // Initialize theme state
     this.state = themeState;
@@ -61,6 +68,9 @@ export class ThemeManager {
    * Initialize theme manager and set up event listeners
    */
   initialize() {
+    // Initialize theme service
+    themeService.initialize();
+    
     // Find DOM elements
     this.elements = this.domFinder.findElements();
     
@@ -94,7 +104,31 @@ export class ThemeManager {
     console.log('Theme Manager initialized');
     
     // Publish theme initialized event
-    this.eventBus.publish('theme:initialized', { theme: 'dark-space' });
+    this.eventBus.publish('theme:initialized', { theme: themeService.currentThemeName });
+    
+    // Add theme toggle button if it exists
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener('click', () => {
+        this.toggleDarkMode();
+      });
+    }
+  }
+  
+  /**
+   * Toggle between light and dark themes
+   */
+  toggleDarkMode() {
+    const newTheme = themeService.toggleDarkMode();
+    console.log(`Theme switched to: ${newTheme}`);
+    
+    // Update state for backward compatibility
+    this.state.isDarkTheme = newTheme === 'dark';
+    
+    // Refresh UI components that depend on theme
+    if (this.cytoscapeThemeManager) {
+      this.cytoscapeThemeManager.applyCytoscapeTheme();
+    }
   }
   
   /**
@@ -264,6 +298,10 @@ toggleConversationPanel() {
       return;
     }
     
+    // Update theme service
+    themeService.handleNodeSelected(nodeData);
+    
+    // Update local state for backward compatibility
     this.state.activeNodeId = nodeData.id;
     
     // If conversation panel is collapsed, expand it
@@ -315,6 +353,9 @@ toggleConversationPanel() {
       console.warn('Invalid data in handleNodeExecuting');
       return;
     }
+    
+    // Update theme service
+    themeService.handleNodeExecuting(data);
     
     const { nodeId, progress } = data;
     
@@ -589,6 +630,9 @@ toggleConversationPanel() {
         console.warn('Error destroying executionUIManager:', error);
       }
     }
+    
+    // Clean up theme service
+    themeService.destroy();
     
     // Remove any added style elements
     try {

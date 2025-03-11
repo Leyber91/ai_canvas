@@ -1,51 +1,396 @@
 /* 
-  _theme-variables.css
-  Defines the color scheme and visual variables for the space sci-fi glassmorphic theme
-*/
+ * _theme-variables.css
+ * Theme variables for AI Canvas - supports both light and dark themes
+ */
 
 :root {
-  /* Base colors */
-  --space-bg-primary: #070b14;
-  --space-bg-secondary: #0e1525;
-  --space-surface: rgba(22, 28, 45, 0.8);
+  /* Base Theme Colors - Dark Theme by Default */
+  --theme-bg-primary: var(--space-black);
+  --theme-bg-secondary: var(--space-dark);
+  --theme-bg-tertiary: var(--space-blue);
+  --theme-bg-surface: var(--space-navy);
   
-  /* Accent colors */
-  --neon-blue: #00c2ff;
-  --neon-blue-dim: rgba(0, 194, 255, 0.5);
-  --neon-blue-transparent: rgba(0, 194, 255, 0.3);
-  --neon-purple: #ae00ff;
-  --neon-purple-transparent: rgba(174, 0, 255, 0.3);
-  --neon-teal: #00ffd5;
-  --neon-teal-transparent: rgba(0, 255, 213, 0.3);
+  /* Text Colors */
+  --theme-text-primary: var(--text-primary);
+  --theme-text-secondary: var(--text-secondary);
+  --theme-text-tertiary: var(--text-tertiary);
+  --theme-text-muted: var(--text-muted);
   
-  /* Functional colors */
-  --success-color: #00ff9d;
-  --success-transparent: rgba(0, 255, 157, 0.3);
-  --error-color: #ff3377;
-  --error-transparent: rgba(255, 51, 119, 0.3);
-  --warning-color: #ffbb00;
-  --warning-transparent: rgba(255, 187, 0, 0.3);
+  /* Accent Colors */
+  --theme-accent-primary: var(--neon-blue);
+  --theme-accent-secondary: var(--neon-purple);
+  --theme-accent-tertiary: var(--neon-pink);
   
-  /* Glassmorphism */
-  --glass-bg: rgba(18, 22, 36, 0.6);
-  --glass-border: rgba(80, 120, 240, 0.3);
-  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  --glass-blur: 8px;
+  /* Font Settings */
+  --theme-font-primary: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
+  --theme-font-secondary: 'Roboto Mono', 'Consolas', monospace;
+  --theme-font-weight-normal: 400;
+  --theme-font-weight-medium: 500;
+  --theme-font-weight-bold: 700;
+  --theme-font-size-xs: 0.75rem;
+  --theme-font-size-sm: 0.875rem;
+  --theme-font-size-md: 1rem;
+  --theme-font-size-lg: 1.125rem;
+  --theme-font-size-xl: 1.25rem;
+  --theme-font-size-xxl: 1.5rem;
+  --theme-line-height-tight: 1.2;
+  --theme-line-height-normal: 1.5;
+  --theme-line-height-loose: 1.8;
+  --theme-letter-spacing-tight: -0.01em;
+  --theme-letter-spacing-normal: 0;
+  --theme-letter-spacing-wide: 0.01em;
   
-  /* Text */
-  --text-primary: #ffffff;
-  --text-secondary: #b3c5ef;
-  --text-muted: #6b88b5;
+  /* UI Component Colors */
+  --theme-panel-bg: var(--panel-bg);
+  --theme-panel-border: var(--panel-border);
+  --theme-card-bg: var(--card-bg);
+  --theme-modal-bg: rgba(18, 22, 36, 0.9);
+  --theme-modal-border: var(--panel-border);
   
-  /* Transitions */
-  --transition-speed: 0.3s;
+  /* Form Elements */
+  --theme-input-bg: rgba(10, 14, 23, 0.5);
+  --theme-input-border: var(--panel-border);
+  --theme-input-focus-border: rgba(0, 194, 255, 0.5);
+  --theme-input-text: var(--text-primary);
+  --theme-input-placeholder: var(--text-muted);
   
-  /* Node types */
-  --ollama-node-color: var(--neon-blue);
-  --groq-node-color: var(--neon-purple);
+  /* Button Colors */
+  --theme-button-primary-bg: rgba(0, 194, 255, 0.2);
+  --theme-button-primary-hover: rgba(0, 194, 255, 0.3);
+  --theme-button-primary-active: rgba(0, 194, 255, 0.4);
+  --theme-button-primary-text: var(--text-primary);
+  --theme-button-primary-border: rgba(0, 194, 255, 0.5);
   
-  /* Sizes */
-  --border-radius-sm: 4px;
-  --border-radius-md: 8px;
-  --border-radius-lg: 12px;
+  --theme-button-secondary-bg: rgba(174, 0, 255, 0.2);
+  --theme-button-secondary-hover: rgba(174, 0, 255, 0.3);
+  --theme-button-secondary-active: rgba(174, 0, 255, 0.4);
+  --theme-button-secondary-text: var(--text-primary);
+  --theme-button-secondary-border: rgba(174, 0, 255, 0.5);
+  
+  /* Status Colors */
+  --theme-success: var(--success-color);
+  --theme-warning: var(--warning-color);
+  --theme-error: var(--error-color);
+  --theme-info: var(--info-color);
+  
+  /* Effects */
+  --theme-shadow: var(--shadow-md);
+  --theme-glow: var(--glow-blue);
+  --theme-glass-bg: var(--glass-bg);
+  --theme-glass-border: var(--glass-border);
+  
+  /* Gradients */
+  --theme-gradient-primary: var(--gradient-blue);
+  --theme-gradient-secondary: var(--gradient-purple);
+  --theme-gradient-background: var(--gradient-cosmos);
+  
+  /* Node Colors */
+  --theme-node-default: var(--info-color);
+  --theme-node-selected: var(--neon-purple);
+  --theme-node-executing: var(--node-executing-color);
+  --theme-node-completed: var(--node-completed-color);
+  --theme-node-error: var(--node-error-color);
+  
+  /* Scrollbar */
+  --theme-scrollbar-track: rgba(0, 0, 0, 0.2);
+  --theme-scrollbar-thumb: rgba(0, 194, 255, 0.3);
+  --theme-scrollbar-thumb-hover: rgba(0, 194, 255, 0.5);
+}
+
+/* Light Theme Overrides */
+.theme-light {
+  /* Base Theme Colors - Light Theme */
+  --theme-bg-primary: #f8f9fc;
+  --theme-bg-secondary: #eef1f8;
+  --theme-bg-tertiary: #e4e9f5;
+  --theme-bg-surface: #ffffff;
+  
+  /* Text Colors */
+  --theme-text-primary: #1a1f36;
+  --theme-text-secondary: #424867;
+  --theme-text-tertiary: #5a6387;
+  --theme-text-muted: #8890ad;
+  
+  /* Accent Colors - Brighter for light theme */
+  --theme-accent-primary: #0078d4;
+  --theme-accent-secondary: #6435c9;
+  --theme-accent-tertiary: #e91e63;
+  
+  /* UI Component Colors */
+  --theme-panel-bg: rgba(255, 255, 255, 0.9);
+  --theme-panel-border: rgba(80, 120, 240, 0.2);
+  --theme-card-bg: rgba(255, 255, 255, 0.8);
+  --theme-modal-bg: rgba(255, 255, 255, 0.95);
+  --theme-modal-border: rgba(80, 120, 240, 0.2);
+  
+  /* Form Elements */
+  --theme-input-bg: rgba(240, 245, 255, 0.5);
+  --theme-input-border: rgba(80, 120, 240, 0.2);
+  --theme-input-focus-border: rgba(0, 120, 212, 0.5);
+  --theme-input-text: #1a1f36;
+  --theme-input-placeholder: #8890ad;
+  
+  /* Button Colors */
+  --theme-button-primary-bg: rgba(0, 120, 212, 0.1);
+  --theme-button-primary-hover: rgba(0, 120, 212, 0.2);
+  --theme-button-primary-active: rgba(0, 120, 212, 0.3);
+  --theme-button-primary-text: #0078d4;
+  --theme-button-primary-border: rgba(0, 120, 212, 0.3);
+  
+  --theme-button-secondary-bg: rgba(100, 53, 201, 0.1);
+  --theme-button-secondary-hover: rgba(100, 53, 201, 0.2);
+  --theme-button-secondary-active: rgba(100, 53, 201, 0.3);
+  --theme-button-secondary-text: #6435c9;
+  --theme-button-secondary-border: rgba(100, 53, 201, 0.3);
+  
+  /* Status Colors */
+  --theme-success: #27ae60;
+  --theme-warning: #f39c12;
+  --theme-error: #e74c3c;
+  --theme-info: #3498db;
+  
+  /* Effects */
+  --theme-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --theme-glow: 0 0 15px rgba(0, 120, 212, 0.3);
+  --theme-glass-bg: rgba(255, 255, 255, 0.7);
+  --theme-glass-border: rgba(80, 120, 240, 0.15);
+  
+  /* Gradients */
+  --theme-gradient-primary: linear-gradient(45deg, #0078d4, #2b88d8);
+  --theme-gradient-secondary: linear-gradient(45deg, #6435c9, #8662d8);
+  --theme-gradient-background: linear-gradient(180deg, #f8f9fc, #eef1f8);
+  
+  /* Node Colors */
+  --theme-node-default: #3498db;
+  --theme-node-selected: #6435c9;
+  --theme-node-executing: #00a8e8;
+  --theme-node-completed: #27ae60;
+  --theme-node-error: #e74c3c;
+  
+  /* Scrollbar */
+  --theme-scrollbar-track: rgba(0, 0, 0, 0.05);
+  --theme-scrollbar-thumb: rgba(0, 120, 212, 0.2);
+  --theme-scrollbar-thumb-hover: rgba(0, 120, 212, 0.4);
+}
+
+/* Theme Toggle Button */
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--theme-button-secondary-bg);
+  border: 1px solid var(--theme-button-secondary-border);
+  color: var(--theme-button-secondary-text);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-toggle:hover {
+  background: var(--theme-button-secondary-hover);
+  transform: rotate(15deg);
+  box-shadow: 0 0 10px rgba(174, 0, 255, 0.3);
+}
+
+.theme-toggle:active {
+  background: var(--theme-button-secondary-active);
+  transform: scale(0.95);
+}
+
+.theme-toggle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, transparent 20%, var(--theme-button-secondary-bg) 80%);
+  transform: scale(2);
+  opacity: 0;
+  transition: transform 0.4s, opacity 0.3s;
+}
+
+.theme-toggle:active::before {
+  transform: scale(0);
+  opacity: 0.3;
+  transition: 0s;
+}
+
+.theme-icon {
+  font-size: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Workflow Panel Draggable Styles */
+.draggable-panel {
+  cursor: move;
+  user-select: none;
+  position: absolute;
+  z-index: var(--z-above);
+  background-color: var(--theme-panel-bg);
+  border: 1px solid var(--theme-panel-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--theme-shadow);
+  transition: box-shadow 0.3s ease;
+  resize: both;
+  overflow: auto;
+}
+
+.draggable-panel:hover {
+  box-shadow: var(--theme-glow);
+}
+
+.draggable-panel-header {
+  padding: 10px 15px;
+  background-color: var(--theme-bg-tertiary);
+  border-bottom: 1px solid var(--theme-panel-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top-left-radius: var(--border-radius-lg);
+  border-top-right-radius: var(--border-radius-lg);
+}
+
+.draggable-panel-title {
+  font-weight: var(--theme-font-weight-medium);
+  font-size: var(--theme-font-size-md);
+  color: var(--theme-text-primary);
+}
+
+.draggable-panel-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.draggable-panel-content {
+  padding: 15px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.panel-control-button {
+  background: transparent;
+  border: none;
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.panel-control-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--theme-text-primary);
+}
+
+/* Transition for theme switching */
+body, button, input, select, textarea, .modal-content, .panel, .card,
+.conversation-panel, .canvas-container, #cy, .node-info, .chat-container {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Enhanced Node Styling */
+.node {
+  border-radius: 8px;
+  border-width: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.node:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.node.selected {
+  border-color: var(--theme-accent-secondary);
+  box-shadow: 0 0 0 2px var(--theme-accent-secondary), 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.node.executing {
+  border-color: var(--theme-accent-primary);
+  box-shadow: 0 0 15px var(--theme-accent-primary);
+  animation: node-pulse 2s infinite;
+}
+
+.node.completed {
+  border-color: var(--theme-success);
+}
+
+.node.error {
+  border-color: var(--theme-error);
+}
+
+@keyframes node-pulse {
+  0% { box-shadow: 0 0 5px var(--theme-accent-primary); }
+  50% { box-shadow: 0 0 20px var(--theme-accent-primary); }
+  100% { box-shadow: 0 0 5px var(--theme-accent-primary); }
+}
+
+/* Enhanced Edge Styling */
+.edge {
+  width: 2px;
+  transition: all 0.3s ease;
+  opacity: 0.7;
+}
+
+.edge:hover {
+  width: 3px;
+  opacity: 1;
+}
+
+.edge.selected {
+  width: 3px;
+  opacity: 1;
+}
+
+/* Enhanced Button Styling */
+button {
+  font-family: var(--theme-font-primary);
+  font-weight: var(--theme-font-weight-medium);
+  letter-spacing: var(--theme-letter-spacing-wide);
+  text-transform: uppercase;
+  font-size: var(--theme-font-size-sm);
+  padding: 10px 16px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, transparent 20%, var(--theme-button-primary-bg) 80%);
+  transform: scale(2);
+  opacity: 0;
+  transition: transform 0.4s, opacity 0.3s;
+}
+
+button:active::before {
+  transform: scale(0);
+  opacity: 0.3;
+  transition: 0s;
+}
+
+/* Enhanced Input Styling */
+input, select, textarea {
+  font-family: var(--theme-font-primary);
+  font-size: var(--theme-font-size-md);
+  padding: 10px 14px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
 }

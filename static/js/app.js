@@ -15,6 +15,7 @@ import { ConversationManager } from './conversation/ConversationManager.js';
 import { ModelRegistry } from './models/ModelRegistry.js';
 import { WorkflowManager } from './workflow/WorkflowManager.js';
 import { UIManager } from './ui/UIManager.js';
+import { workflowPanelRegistry } from './ui/registry/WorkflowPanelRegistry.js';
 import { config } from './config.js';
 
 /**
@@ -146,6 +147,7 @@ class AICanvas {
     window.errorHandler = this.errorHandler;
     window.eventBus = this.eventBus;
     window.workflowManager = this.workflowManager;
+    window.workflowPanelRegistry = workflowPanelRegistry;
     
     // Add helper methods for debugging
     window.debugGraphState = () => {
@@ -166,6 +168,13 @@ class AICanvas {
     
     // Add sync method for debugging
     window.syncGraphIds = () => this.syncGraphIds();
+    
+    // Add helper method to clean up duplicate workflow panels
+    window.cleanupWorkflowPanels = () => {
+      const removedCount = workflowPanelRegistry.cleanupDuplicates();
+      console.log(`Manually cleaned up ${removedCount} duplicate workflow panels`);
+      return removedCount;
+    };
     
     // Add resetLocalGraphData to global scope for backward compatibility
     window.resetLocalGraphData = () => {
@@ -210,6 +219,18 @@ class AICanvas {
   }
   
   /**
+   * Clean up any duplicate workflow panels from previous sessions
+   */
+  cleanupDuplicatePanels() {
+    // Use the registry to clean up duplicates
+    const removedCount = workflowPanelRegistry.cleanupDuplicates();
+    
+    if (removedCount > 0) {
+      console.log(`Cleaned up ${removedCount} duplicate workflow panels during application initialization`);
+    }
+  }
+  
+  /**
    * Initialize the application and all modules
    */
   async initialize() {
@@ -219,6 +240,9 @@ class AICanvas {
         this.eventBus.setDebugMode(true);
         console.log('Debug mode enabled');
       }
+      
+      // Clean up any duplicate workflow panels from previous sessions
+      this.cleanupDuplicatePanels();
       
       // Initialize modules in the correct order
       await this.modelRegistry.initialize();

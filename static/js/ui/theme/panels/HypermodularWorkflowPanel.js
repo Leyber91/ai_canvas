@@ -47,6 +47,7 @@ export class HypermodularWorkflowPanel extends EventEmitter {
                 bottom: '20px',
                 left: '20px'
             },
+            isIntegrated: false, // Flag to indicate if this panel is integrated into another panel
             ...options
         };
         
@@ -95,40 +96,61 @@ export class HypermodularWorkflowPanel extends EventEmitter {
     render() {
         if (!this.container) return;
         
-        // Create panel HTML
-        const html = `
-            <div class="hypermodular-workflow-panel">
-                <div class="panel-header">
-                    <h3 class="panel-title" data-expanded="${this.state.expanded ? 'true' : 'false'}">
-                        <span>Workflow Execution</span>
-                        <span class="toggle-indicator">${this.state.expanded ? '▼' : '►'}</span>
-                    </h3>
-                    <div class="panel-controls">
-                        <button class="minimize-btn" title="Minimize">_</button>
-                        <button class="close-btn" title="Close">×</button>
+        // Create panel HTML - different structure based on integration mode
+        let html;
+        
+        if (this.options.isIntegrated) {
+            // When integrated into another panel, we don't need our own panel header
+            html = `
+                <div class="workflow-status-container"></div>
+                <div class="execution-progress-container"></div>
+                <div class="execution-steps-container"></div>
+                <div class="execution-results-container"></div>
+                <div class="workflow-controls-container"></div>
+                <div class="workflow-errors-container"></div>
+            `;
+            
+            // Set container content
+            this.container.innerHTML = html;
+            
+            // In integrated mode, the panel is the container itself
+            this.elements.panel = this.container;
+        } else {
+            // Standalone mode with its own panel structure
+            html = `
+                <div class="hypermodular-workflow-panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title" data-expanded="${this.state.expanded ? 'true' : 'false'}">
+                            <span>Workflow Execution</span>
+                            <span class="toggle-indicator">${this.state.expanded ? '▼' : '►'}</span>
+                        </h3>
+                        <div class="panel-controls">
+                            <button class="minimize-btn" title="Minimize">_</button>
+                            <button class="close-btn" title="Close">×</button>
+                        </div>
+                    </div>
+                    
+                    <div class="panel-content">
+                        <!-- Each section will be rendered by its respective manager -->
+                        <div class="workflow-status-container"></div>
+                        <div class="execution-progress-container"></div>
+                        <div class="execution-steps-container"></div>
+                        <div class="execution-results-container"></div>
+                        <div class="workflow-controls-container"></div>
+                        <div class="workflow-errors-container"></div>
                     </div>
                 </div>
-                
-                <div class="panel-content">
-                    <!-- Each section will be rendered by its respective manager -->
-                    <div class="workflow-status-container"></div>
-                    <div class="execution-progress-container"></div>
-                    <div class="execution-steps-container"></div>
-                    <div class="execution-results-container"></div>
-                    <div class="workflow-controls-container"></div>
-                    <div class="workflow-errors-container"></div>
-                </div>
-            </div>
-        `;
-        
-        // Set container content
-        this.container.innerHTML = html;
-        
-        // Get references to elements
-        this.elements.panel = this.container.querySelector('.hypermodular-workflow-panel');
-        this.elements.panelTitle = this.container.querySelector('.panel-title');
-        this.elements.minimizeBtn = this.container.querySelector('.minimize-btn');
-        this.elements.closeBtn = this.container.querySelector('.close-btn');
+            `;
+            
+            // Set container content
+            this.container.innerHTML = html;
+            
+            // Get references to elements
+            this.elements.panel = this.container.querySelector('.hypermodular-workflow-panel');
+            this.elements.panelTitle = this.container.querySelector('.panel-title');
+            this.elements.minimizeBtn = this.container.querySelector('.minimize-btn');
+            this.elements.closeBtn = this.container.querySelector('.close-btn');
+        }
     }
     
     /**
@@ -141,14 +163,17 @@ export class HypermodularWorkflowPanel extends EventEmitter {
             theme: this.options.theme
         });
         
-        // Draggable Manager - handles dragging functionality
-        this.draggableManager = new DraggableManager({
-            panel: this.elements.panel,
-            handle: this.container.querySelector('.panel-header'),
-            container: document.body,
-            onDragStart: () => this.emit('dragStart'),
-            onDragEnd: () => this.emit('dragEnd')
-        });
+        // Only initialize draggable manager if not integrated
+        if (!this.options.isIntegrated) {
+            // Draggable Manager - handles dragging functionality
+            this.draggableManager = new DraggableManager({
+                panel: this.elements.panel,
+                handle: this.container.querySelector('.panel-header'),
+                container: document.body,
+                onDragStart: () => this.emit('dragStart'),
+                onDragEnd: () => this.emit('dragEnd')
+            });
+        }
         
         // Status Display Manager
         this.statusManager = new StatusDisplayManager({
@@ -203,6 +228,9 @@ export class HypermodularWorkflowPanel extends EventEmitter {
      * Set up event listeners for the panel
      */
     setupEventListeners() {
+        // Skip if in integrated mode
+        if (this.options.isIntegrated) return;
+        
         // Panel toggle
         if (this.elements.panelTitle) {
             this.elements.panelTitle.addEventListener('click', this.handleTogglePanel);
@@ -229,7 +257,7 @@ export class HypermodularWorkflowPanel extends EventEmitter {
      * Apply initial position to the panel
      */
     applyInitialPosition() {
-        if (!this.elements.panel) return;
+        if (!this.elements.panel || this.options.isIntegrated) return;
         
         const panel = this.elements.panel;
         const { position } = this.options;

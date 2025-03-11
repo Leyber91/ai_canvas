@@ -1,12 +1,14 @@
 /* _workflow-panel.css */
 
 .workflow-panel {
-    background-color: #f8f9fa;
-    border: 1px solid #ddd;
-    border-radius: 5px;
+    background-color: rgba(18, 22, 36, 0.8);
+    border: 1px solid rgba(80, 120, 240, 0.3);
+    border-radius: 8px;
     padding: 15px;
     margin-top: 15px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    color: rgba(255, 255, 255, 0.95);
+    font-family: 'Roboto', 'Segoe UI', sans-serif;
 }
 
 .workflow-header {
@@ -14,36 +16,44 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 15px;
-    border-bottom: 1px solid #e9ecef;
+    border-bottom: 1px solid rgba(80, 120, 240, 0.3);
     padding-bottom: 10px;
+    background-color: rgba(23, 32, 55, 0.8);
+    border-radius: 6px 6px 0 0;
+    padding: 12px 15px;
+    margin: -15px -15px 15px -15px;
 }
 
 .workflow-header h3 {
     margin: 0;
     font-size: 1.2rem;
-    color: #2c3e50;
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 500;
 }
 
 .toggle-details-btn {
     background-color: transparent;
-    border: 1px solid #ccc;
+    border: 1px solid rgba(80, 120, 240, 0.3);
     padding: 4px 8px;
     font-size: 0.8rem;
-    color: #6c757d;
+    color: rgba(170, 200, 255, 0.7);
     border-radius: 4px;
+    transition: all 0.3s ease-in-out;
 }
 
 .toggle-details-btn:hover {
-    background-color: #e9ecef;
+    background-color: rgba(80, 120, 240, 0.1);
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .cycle-warning {
-    background-color: #fff3cd;
-    color: #856404;
+    background-color: rgba(255, 181, 69, 0.1);
+    color: rgba(255, 255, 255, 0.95);
     padding: 10px;
     border-radius: 4px;
     margin-bottom: 15px;
     font-size: 0.9rem;
+    border: 1px solid rgba(255, 181, 69, 0.5);
 }
 
 .cycle-options {
@@ -56,12 +66,15 @@
 .cycle-options label {
     margin: 0;
     font-weight: 500;
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .cycle-options select {
     padding: 4px 8px;
     border-radius: 4px;
-    border: 1px solid #ced4da;
+    border: 1px solid rgba(80, 120, 240, 0.3);
+    background-color: rgba(10, 14, 23, 0.5);
+    color: rgba(255, 255, 255, 0.95);
     flex-grow: 1;
     font-size: 0.9rem;
 }
@@ -70,41 +83,48 @@
     margin-bottom: 15px;
     display: flex;
     justify-content: center;
+    gap: 10px;
 }
 
 .execute-btn,
 .cancel-btn {
     padding: 8px 16px;
     font-weight: bold;
-    border: none;
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: all 0.3s ease-in-out;
     width: 100%;
     max-width: 300px;
 }
 
 .execute-btn {
-    background-color: #27ae60;
-    color: white;
+    background-color: rgba(0, 194, 255, 0.2);
+    color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 194, 255, 0.5);
 }
 
 .execute-btn:hover {
-    background-color: #219653;
+    background-color: rgba(0, 194, 255, 0.3);
+    box-shadow: 0 0 10px rgba(0, 194, 255, 0.3);
 }
 
 .execute-btn:disabled {
-    background-color: #a1cdba;
+    background-color: rgba(130, 160, 210, 0.2);
+    border-color: rgba(130, 160, 210, 0.3);
+    color: rgba(170, 200, 255, 0.7);
     cursor: not-allowed;
+    box-shadow: none;
 }
 
 .cancel-btn {
-    background-color: #e74c3c;
-    color: white;
+    background-color: rgba(255, 51, 119, 0.2);
+    color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 51, 119, 0.5);
 }
 
 .cancel-btn:hover {
-    background-color: #c0392b;
+    background-color: rgba(255, 51, 119, 0.3);
+    box-shadow: 0 0 10px rgba(255, 51, 119, 0.3);
 }
 
 .execution-progress {
@@ -113,37 +133,41 @@
 
 .progress-bar {
     height: 10px;
-    background-color: #e9ecef;
+    background-color: rgba(10, 14, 23, 0.5);
     border-radius: 5px;
     overflow: hidden;
     margin-bottom: 5px;
+    border: 1px solid rgba(80, 120, 240, 0.2);
 }
 
 .progress-fill {
     height: 100%;
-    background-color: #3498db;
+    background-color: #00c2ff;
     border-radius: 5px;
     transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(0, 194, 255, 0.5);
 }
 
 .progress-text {
     text-align: center;
     font-size: 0.8rem;
-    color: #6c757d;
+    color: rgba(170, 200, 255, 0.7);
 }
 
 .execution-details {
-    background-color: white;
-    border: 1px solid #e9ecef;
+    background-color: rgba(10, 14, 23, 0.5);
+    border: 1px solid rgba(80, 120, 240, 0.3);
     border-radius: 4px;
     padding: 15px;
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .execution-details h4 {
     margin-top: 0;
     margin-bottom: 10px;
     font-size: 1rem;
-    color: #2c3e50;
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 500;
 }
 
 .execution-order-list {
@@ -158,83 +182,81 @@
 }
 
 .execution-node.pending {
-    color: #6c757d;
+    color: rgba(170, 200, 255, 0.7);
 }
 
 .execution-node.executing {
-    color: #3498db;
+    color: #00c2ff;
     font-weight: bold;
 }
 
 .execution-node.completed {
-    color: #27ae60;
+    color: #27c98f;
 }
 
 .execution-node.error {
-    color: #e74c3c;
+    color: #ff5a65;
 }
 
 .execution-stats {
     display: flex;
     justify-content: space-between;
-    background-color: #f8f9fa;
+    background-color: rgba(23, 32, 55, 0.6);
     padding: 10px;
     border-radius: 4px;
     font-size: 0.85rem;
-    color: #6c757d;
+    color: rgba(170, 200, 255, 0.7);
+    border: 1px solid rgba(80, 120, 240, 0.2);
 }
 
 /* Node Visualization Styles for Workflow States */
 .node.executing {
-    border: 3px solid #3498db;
-    box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+    border: 3px solid #00c2ff;
+    box-shadow: 0 0 15px rgba(0, 194, 255, 0.5);
 }
 
 .node.completed {
-    border: 3px solid #27ae60;
+    border: 3px solid #27c98f;
+    box-shadow: 0 0 10px rgba(39, 201, 143, 0.3);
 }
 
 .node.error {
-    border: 3px solid #e74c3c;
+    border: 3px solid #ff5a65;
+    box-shadow: 0 0 10px rgba(255, 90, 101, 0.3);
 }
 
 .edge.executing {
-    line-color: #3498db !important;
-    target-arrow-color: #3498db !important;
+    line-color: #00c2ff !important;
+    target-arrow-color: #00c2ff !important;
     width: 3px !important;
 }
 
 .edge.completed {
-    line-color: #27ae60 !important;
-    target-arrow-color: #27ae60 !important;
+    line-color: #27c98f !important;
+    target-arrow-color: #27c98f !important;
     width: 3px !important;
 }
 
 .edge.error {
-    line-color: #e74c3c !important;
-    target-arrow-color: #e74c3c !important;
+    line-color: #ff5a65 !important;
+    target-arrow-color: #ff5a65 !important;
     width: 3px !important;
 }
 
 @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(52, 152, 219, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(52, 152, 219, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(0, 194, 255, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(0, 194, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 194, 255, 0); }
 }
 
-.workflow-panel {
-    padding: 15px;
-    background-color: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    margin-bottom: 15px;
-}
+/* Remove duplicate .workflow-panel definition */
 
 .panel-title {
     margin-top: 0;
     margin-bottom: 15px;
-    color: #333;
+    color: rgba(255, 255, 255, 0.95);
     font-size: 1.2rem;
+    font-weight: 500;
 }
 
 /* Status indicator */
@@ -247,7 +269,9 @@
     align-items: center;
     padding: 8px 12px;
     border-radius: 4px;
-    background-color: #f5f5f5;
+    background-color: rgba(10, 14, 23, 0.5);
+    color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(80, 120, 240, 0.3);
 }
 
 .status-dot {
@@ -258,20 +282,20 @@
 }
 
 .status-indicator.waiting .status-dot {
-    background-color: #95a5a6;
+    background-color: rgba(130, 160, 210, 0.6);
 }
 
 .status-indicator.executing .status-dot {
-    background-color: #3498db;
+    background-color: #00c2ff;
     animation: pulse 1.5s infinite;
 }
 
 .status-indicator.success .status-dot {
-    background-color: #2ecc71;
+    background-color: #27c98f;
 }
 
 .status-indicator.error .status-dot {
-    background-color: #e74c3c;
+    background-color: #ff5a65;
 }
 
 /* Execution steps */
@@ -282,10 +306,11 @@
 .steps-container {
     max-height: 200px;
     overflow-y: auto;
-    border: 1px solid #ddd;
+    border: 1px solid rgba(80, 120, 240, 0.3);
     border-radius: 4px;
     padding: 10px;
-    background-color: white;
+    background-color: rgba(10, 14, 23, 0.5);
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .steps-list {
@@ -297,9 +322,10 @@
     margin-bottom: 8px;
     padding: 8px;
     border-radius: 4px;
-    background-color: #f9f9f9;
+    background-color: rgba(23, 32, 55, 0.6);
     display: flex;
     align-items: center;
+    border: 1px solid rgba(80, 120, 240, 0.2);
 }
 
 .step-number {
@@ -308,12 +334,13 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #3498db;
+    background-color: #00c2ff;
     color: white;
     border-radius: 50%;
     margin-right: 10px;
     font-size: 0.8rem;
     font-weight: bold;
+    box-shadow: 0 0 5px rgba(0, 194, 255, 0.5);
 }
 
 .step-name {
@@ -323,7 +350,7 @@
 
 .step-model {
     font-size: 0.8rem;
-    color: #7f8c8d;
+    color: rgba(170, 200, 255, 0.7);
     margin: 0 10px;
 }
 
@@ -335,23 +362,26 @@
 }
 
 .step-status.pending {
-    background-color: #f5f5f5;
-    color: #7f8c8d;
+    background-color: rgba(10, 14, 23, 0.5);
+    color: rgba(170, 200, 255, 0.7);
 }
 
 .step-status.executing {
-    background-color: #3498db;
+    background-color: #00c2ff;
     color: white;
+    box-shadow: 0 0 5px rgba(0, 194, 255, 0.5);
 }
 
 .step-status.success {
-    background-color: #2ecc71;
+    background-color: #27c98f;
     color: white;
+    box-shadow: 0 0 5px rgba(39, 201, 143, 0.5);
 }
 
 .step-status.error {
-    background-color: #e74c3c;
+    background-color: #ff5a65;
     color: white;
+    box-shadow: 0 0 5px rgba(255, 90, 101, 0.5);
 }
 
 /* Execution results */
@@ -362,45 +392,50 @@
 .results-container {
     max-height: 300px;
     overflow-y: auto;
-    border: 1px solid #ddd;
+    border: 1px solid rgba(80, 120, 240, 0.3);
     border-radius: 4px;
     padding: 10px;
-    background-color: white;
+    background-color: rgba(10, 14, 23, 0.5);
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .result-item {
     margin-bottom: 15px;
     padding: 10px;
     border-radius: 4px;
-    background-color: #f9f9f9;
-    border-left: 4px solid #3498db;
+    background-color: rgba(23, 32, 55, 0.6);
+    border-left: 4px solid #00c2ff;
+    border: 1px solid rgba(80, 120, 240, 0.2);
 }
 
 .result-item.error {
-    border-left-color: #e74c3c;
+    border-left-color: #ff5a65;
 }
 
 .result-item h5 {
     margin-top: 0;
     margin-bottom: 10px;
-    color: #333;
+    color: rgba(255, 255, 255, 0.95);
+    font-weight: 500;
 }
 
 .result-content {
-    background-color: #f5f5f5;
+    background-color: rgba(10, 14, 23, 0.5);
     padding: 10px;
     border-radius: 4px;
     overflow-x: auto;
     margin: 0;
     font-size: 0.9rem;
     white-space: pre-wrap;
+    color: rgba(221, 235, 255, 0.85);
+    border: 1px solid rgba(80, 120, 240, 0.2);
 }
 
 .show-full-result-btn {
     margin-top: 10px;
     background-color: transparent;
-    border: 1px solid #3498db;
-    color: #3498db;
+    border: 1px solid #00c2ff;
+    color: #00c2ff;
     padding: 5px 10px;
     border-radius: 4px;
     cursor: pointer;
@@ -408,8 +443,8 @@
 }
 
 .show-full-result-btn:hover {
-    background-color: #3498db;
-    color: white;
+    background-color: rgba(0, 194, 255, 0.2);
+    color: rgba(255, 255, 255, 0.95);
 }
 
 /* Workflow controls */
@@ -420,50 +455,55 @@
 }
 
 .execute-btn {
-    background-color: #27ae60;
-    color: white;
-    border: none;
+    background-color: rgba(0, 194, 255, 0.2);
+    color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 194, 255, 0.5);
     padding: 8px 16px;
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
+    transition: all 0.3s ease-in-out;
 }
 
 .execute-btn:hover {
-    background-color: #219653;
+    background-color: rgba(0, 194, 255, 0.3);
 }
 
 .stop-btn {
-    background-color: #e74c3c;
-    color: white;
-    border: none;
+    background-color: rgba(255, 51, 119, 0.2);
+    color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 51, 119, 0.5);
     padding: 8px 16px;
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
+    transition: all 0.3s ease-in-out;
 }
 
 .stop-btn:hover {
-    background-color: #c0392b;
+    background-color: rgba(255, 51, 119, 0.3);
 }
 
 .stop-btn:disabled {
-    background-color: #95a5a6;
+    background-color: rgba(130, 160, 210, 0.2);
+    border-color: rgba(130, 160, 210, 0.3);
+    color: rgba(170, 200, 255, 0.7);
     cursor: not-allowed;
 }
 
 .validate-btn {
-    background-color: #3498db;
-    color: white;
-    border: none;
+    background-color: rgba(174, 0, 255, 0.2);
+    color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(174, 0, 255, 0.5);
     padding: 8px 16px;
     border-radius: 4px;
     cursor: pointer;
     font-weight: bold;
+    transition: all 0.3s ease-in-out;
 }
 
 .validate-btn:hover {
-    background-color: #2980b9;
+    background-color: rgba(174, 0, 255, 0.3);
 }
 
 /* Error display */
@@ -471,8 +511,9 @@
     margin-top: 15px;
     padding: 10px;
     border-radius: 4px;
-    background-color: #fdedec;
-    border: 1px solid #e74c3c;
+    background-color: rgba(255, 51, 119, 0.1);
+    border: 1px solid rgba(255, 51, 119, 0.5);
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .workflow-errors.hidden {
@@ -480,47 +521,51 @@
 }
 
 .error-message {
-    color: #c0392b;
+    color: #ff5a65;
     font-weight: 500;
 }
 
 .error-item {
     margin-bottom: 5px;
-    color: #c0392b;
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .cycles-warning {
     margin-top: 10px;
     padding: 10px;
-    background-color: #fff9e6;
+    background-color: rgba(255, 181, 69, 0.1);
     border-radius: 4px;
-    border: 1px solid #f1c40f;
+    border: 1px solid rgba(255, 181, 69, 0.5);
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .cycles-warning h4 {
     margin-top: 0;
     margin-bottom: 10px;
-    color: #f39c12;
+    color: #ffb545;
+    font-weight: 500;
 }
 
 .cycles-warning p {
     margin-top: 0;
     margin-bottom: 10px;
+    color: rgba(255, 255, 255, 0.95);
 }
 
 .highlight-cycles-btn,
 .break-cycles-btn {
-    background-color: #f39c12;
-    color: white;
-    border: none;
+    background-color: rgba(255, 181, 69, 0.2);
+    color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 181, 69, 0.5);
     padding: 5px 10px;
     border-radius: 4px;
     cursor: pointer;
     margin-right: 10px;
     font-size: 0.8rem;
+    transition: all 0.3s ease-in-out;
 }
 
 .highlight-cycles-btn:hover,
 .break-cycles-btn:hover {
-    background-color: #e67e22;
+    background-color: rgba(255, 181, 69, 0.3);
 }

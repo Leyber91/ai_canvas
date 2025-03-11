@@ -3,10 +3,15 @@
  *
  * Hypermodularized workflow panel manager that coordinates between the workflow panel
  * and other UI components like the event bus, theme manager, and graph/workflow managers.
+ * 
+ * Now supports draggable workflow panels using the DraggablePanelManager.
+ * Integrated with WorkflowPanelRegistry to prevent duplicate panels.
  */
 import { BasePanelManager } from './panel/BasePanelManager.js';
 import { HypermodularWorkflowPanel } from './theme/panels/HypermodularWorkflowPanel.js';
 import { DOMHelper } from './helpers/domHelpers.js';
+import { draggablePanelManager } from '../core/panel/DraggablePanelManager.js';
+import { workflowPanelRegistry } from './registry/WorkflowPanelRegistry.js';
 
 export class WorkflowPanelManager extends BasePanelManager {
     /**
@@ -59,6 +64,9 @@ export class WorkflowPanelManager extends BasePanelManager {
         // Log initialization
         console.log('Initializing WorkflowPanelManager');
         
+        // Check for existing workflow panels and clean up duplicates
+        this.cleanupDuplicatePanels();
+        
         // Create or find container element
         this.createContainerElement();
         
@@ -68,10 +76,44 @@ export class WorkflowPanelManager extends BasePanelManager {
         // Subscribe to events
         this.subscribeToEvents();
         
+        // Register this panel with the registry
+        this.registerWithRegistry();
+        
         // Call base initialization
         super.initialize();
         
         console.log('WorkflowPanelManager initialized');
+    }
+    
+    /**
+     * Clean up any duplicate workflow panels in the DOM
+     */
+    cleanupDuplicatePanels() {
+        // Use the registry to clean up duplicates
+        const removedCount = workflowPanelRegistry.cleanupDuplicates();
+        
+        if (removedCount > 0) {
+            console.log(`Cleaned up ${removedCount} duplicate workflow panels`);
+        }
+    }
+    
+    /**
+     * Register this panel with the workflow panel registry
+     */
+    registerWithRegistry() {
+        if (!this.panel) return;
+        
+        const panelId = this.draggablePanel ? 'workflow-panel' : 'workflow-panel-fixed';
+        
+        // Register with registry
+        workflowPanelRegistry.registerPanel(panelId, {
+            element: this.draggablePanel || this.containerElement,
+            manager: this,
+            panel: this.panel
+        });
+        
+        // Set as active panel
+        workflowPanelRegistry.setActivePanel(panelId);
     }
     
     /**
@@ -87,31 +129,76 @@ export class WorkflowPanelManager extends BasePanelManager {
         // Look for existing container in DOM
         let container = document.querySelector('.workflow-panel-container');
         
+        // Check if we already have a draggable panel in the registry
+        const existingPanel = workflowPanelRegistry.getPanel('workflow-panel');
+        if (existingPanel && existingPanel.element) {
+            console.log('Using existing workflow panel from registry');
+            
+            // Get the panel content container
+            const panelContent = existingPanel.element.querySelector('.draggable-panel-content') || 
+                                existingPanel.element.querySelector('.workflow-panel-content');
+            
+            if (panelContent) {
+                this.draggablePanel = existingPanel.element;
+                this.containerElement = panelContent;
+                return;
+            }
+        }
+        
+        // Check if draggable panel manager already has this panel
+        const existingDraggablePanel = draggablePanelManager.getPanel('workflow-panel');
+        if (existingDraggablePanel) {
+            console.log('Using existing workflow panel from draggable panel manager');
+            
+            // Get the panel content container
+            const panelContent = existingDraggablePanel.contentContainer || 
+                                existingDraggablePanel.element.querySelector('.draggable-panel-content');
+            
+            if (panelContent) {
+                this.draggablePanel = existingDraggablePanel.element;
+                this.containerElement = panelContent;
+                return;
+            }
+        }
+        
         // Create container if not found
         if (!container) {
-            container = document.createElement('div');
-            container.className = 'workflow-panel-container';
+            // Create a draggable panel instead of a fixed container
+            const panelContent = document.createElement('div');
+            panelContent.className = 'workflow-panel-content';
             
-            // Position and style the container
-            Object.assign(container.style, {
-                position: 'fixed',
-                top: '60px',
-                right: '20px',
-                width: '350px',
-                maxHeight: 'calc(100vh - 80px)',
-                zIndex: '900',
-                overflowY: 'auto'
+            // Create the draggable panel
+            const panel = draggablePanelManager.createPanel({
+                id: 'workflow-panel',
+                title: 'Workflow Panel',
+                content: panelContent,
+                position: { x: window.innerWidth - 370, y: 60 },
+                size: { width: 350, height: 500 },
+                resizable: true,
+                minimizable: true,
+                maximizable: true,
+                closable: false
             });
             
-            // Find appropriate place to insert the container
-            const workflowControls = document.querySelector('.workflow-controls');
-            if (workflowControls) {
-                // Insert before workflow controls
-                workflowControls.parentNode.insertBefore(container, workflowControls);
-            } else {
-                // Append to body if no workflow controls found
-                document.body.appendChild(container);
-            }
+            // Store the panel reference
+            this.draggablePanel = panel;
+            
+            // Use the content container as our container element
+            container = panelContent;
+            
+            // Save panel state when moved or resized
+            draggablePanelManager.onPositionChange = () => {
+                draggablePanelManager.savePanelState('workflow-panel-state');
+            };
+            
+            draggablePanelManager.onResize = () => {
+                draggablePanelManager.savePanelState('workflow-panel-state');
+            };
+            
+            // Load saved panel state
+            draggablePanelManager.loadPanelState('workflow-panel-state');
+            
+            console.log('Created new draggable workflow panel');
         }
         
         this.containerElement = container;
@@ -137,7 +224,8 @@ export class WorkflowPanelManager extends BasePanelManager {
             theme: themeConfig,
             onExecute: this.handleExecute,
             onStop: this.handleStop,
-            onValidate: this.handleValidate
+            onValidate: this.handleValidate,
+            isIntegrated: true // Flag to indicate this is integrated into the workflow panel
         });
         
         // Set initial expansion state using the base class state
@@ -805,9 +893,28 @@ export class WorkflowPanelManager extends BasePanelManager {
             this.panel.destroy();
         }
         
+        // Clean up draggable panel
+        if (this.draggablePanel) {
+            draggablePanelManager.closePanel('workflow-panel');
+            this.draggablePanel = null;
+        }
+        
+        // Unregister from registry
+        const panelId = this.draggablePanel ? 'workflow-panel' : 'workflow-panel-fixed';
+        workflowPanelRegistry.unregisterPanel(panelId);
+        
         this.panel = null;
         
         // Call base destroy
         super.destroy();
+    }
+    
+    /**
+     * Bring the workflow panel to the front
+     */
+    bringToFront() {
+        if (this.draggablePanel) {
+            draggablePanelManager.bringToFront('workflow-panel');
+        }
     }
 }

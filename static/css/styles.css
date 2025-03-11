@@ -5,10 +5,17 @@
   You can rename or reorder these @imports to match your needs.
 */
 
+/* Import variables first so they're available to all other modules */
+@import url('modules/_variables.css');
+@import url('modules/_theme-variables.css');
+
+/* Base styles */
 @import url('modules/_reset-and-base.css');
 @import url('modules/_layout.css');
 @import url('modules/_header.css');
 @import url('modules/_buttons.css');
+
+/* Panel and component styles */
 @import url('modules/_conversation-panel.css');
 @import url('modules/_node-info.css');
 @import url('modules/_node-operations.css');
@@ -16,13 +23,94 @@
 @import url('modules/_chat-section.css');
 @import url('modules/_modal.css');
 @import url('modules/_cytoscape.css');
+
+/* UI indicators and controls */
 @import url('modules/_loading-indicator.css');
 @import url('modules/_typing-indicator.css');
 @import url('modules/_workflow-controls.css');
 @import url('modules/_workflow-panel.css');
+@import url('modules/_workflow-panel-fix.css');
 @import url('modules/_result-modal.css');
 @import url('modules/_validation.css');
 
-/* You can add global overrides or brand-specific tweaks below */
+/* Global styles and overrides */
+body {
+  background-color: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+  font-family: 'Roboto', 'Segoe UI', sans-serif;
+  line-height: 1.5;
+}
 
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
 
+::-webkit-scrollbar-track {
+  background: var(--theme-scrollbar-track);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--theme-scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-scrollbar-thumb-hover);
+}
+
+/* Modern button styling */
+button {
+  background-color: var(--theme-button-primary-bg);
+  color: var(--theme-button-primary-text);
+  border: 1px solid var(--theme-button-primary-border);
+  border-radius: var(--border-radius-md);
+  padding: 8px 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  background-color: var(--theme-button-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+button:active {
+  background-color: var(--theme-button-primary-active);
+  transform: translateY(0);
+}
+
+/* Input styling */
+input, select, textarea {
+  background-color: var(--theme-input-bg);
+  color: var(--theme-input-text);
+  border: 1px solid var(--theme-input-border);
+  border-radius: var(--border-radius-md);
+  padding: 8px 12px;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--theme-input-focus-border);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 194, 255, 0.2);
+}
+
+/* Card and panel styling */
+.card, .panel {
+  background-color: var(--theme-card-bg);
+  border: 1px solid var(--theme-panel-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--theme-shadow);
+}
+
+/* Modal styling */
+.modal-content {
+  background-color: var(--theme-modal-bg);
+  border: 1px solid var(--theme-modal-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
+}
