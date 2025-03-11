@@ -53,38 +53,33 @@ export class APIClient {
   }
   
   /**
+   * Helper method to join URL parts
+   * 
+   * @param {...string} parts - URL parts to join
+   * @returns {string} Joined URL
+   */
+  joinUrl(...parts) {
+    return parts
+      .map(part => part.replace(/^\/+|\/+$/g, ''))
+      .filter(part => part)
+      .join('/');
+  }
+  
+  /**
    * Safely constructs a URL with proper error handling
    * 
    * @param {string} path - The path to append to the base URL
    * @returns {string} The complete URL
    */
-  buildApiUrl(endpoint) {
-    // Remove leading/trailing slashes and api prefix if present
-    const cleanEndpoint = endpoint
-      .replace(/^\/+|\/+$/g, '')
-      .replace(/^api\/+/, '');
-    
-    // Build the full URL - handle both absolute and relative base URLs
-    let url;
+  buildUrl(path) {
     try {
       // Try to use URL constructor for absolute URLs
-      url = new URL(this.joinUrl(this.apiPrefix, cleanEndpoint), this.baseUrl).toString();
+      return new URL(path, this.baseUrl).toString();
     } catch (error) {
       // For relative URLs, construct the path directly
       const basePath = this.baseUrl.replace(/\/$/, ''); // Remove trailing slash
-      const apiPath = this.joinUrl(this.apiPrefix, cleanEndpoint);
-      url = `${basePath}/${apiPath}`;
-      
-      // If running in browser, use absolute URL relative to current origin
-      if (typeof window !== 'undefined') {
-        url = new URL(url, window.location.origin).toString();
-      }
+      return `${basePath}/${path}`;
     }
-    
-    // Log the URL for debugging
-    console.log(`Built API URL: ${url} from endpoint: ${endpoint}`);
-    
-    return url;
   }
   
   /**
@@ -95,22 +90,49 @@ export class APIClient {
    */
   buildApiUrl(endpoint) {
     try {
-      // Clean up the endpoint
+      // Clean up the endpoint - remove leading/trailing slashes and api prefix if present
       const cleanEndpoint = endpoint
-        .replace(/^\/+|\/+$/g, '')  // Remove leading/trailing slashes
-        .replace(/^api\/+/, '');     // Remove api prefix if present
+        .replace(/^\/+|\/+$/g, '')
+        .replace(/^api\/+/, '');
       
-      // Construct the path with api prefix
-      const path = this.apiPrefix 
-        ? `${this.apiPrefix}/${cleanEndpoint}`
-        : cleanEndpoint;
+      // Check if the endpoint already includes the API prefix to avoid duplication
+      const hasApiPrefix = cleanEndpoint.startsWith(this.apiPrefix + '/') || 
+                          cleanEndpoint === this.apiPrefix;
       
-      // Use the safer buildUrl method
+      // Construct the path with api prefix if needed
+      const path = hasApiPrefix 
+        ? cleanEndpoint 
+        : this.joinUrl(this.apiPrefix, cleanEndpoint);
+      
+      // Build the full URL
       const url = this.buildUrl(path);
       
-      // Log for debugging
-      console.log(`Built API URL: ${url} from endpoint: ${endpoint}`);
+      // Double-check for duplicate API prefix in the URL
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/').filter(Boolean);
       
+      // If we have a duplicate api prefix in the path, fix it
+      if (pathParts.filter(part => part === this.apiPrefix).length > 1) {
+        const fixedPathParts = [];
+        let foundApiPrefix = false;
+        
+        for (const part of pathParts) {
+          if (part === this.apiPrefix && !foundApiPrefix) {
+            fixedPathParts.push(part);
+            foundApiPrefix = true;
+          } else if (part !== this.apiPrefix) {
+            fixedPathParts.push(part);
+          }
+        }
+        
+        urlObj.pathname = '/' + fixedPathParts.join('/');
+        const fixedUrl = urlObj.toString();
+        console.log(`Fixed duplicate API prefix in URL: ${url} → ${fixedUrl}`);
+        return fixedUrl;
+      }
+      
+      // Log the URL for debugging
+      console.log(`Built API URL: ${url} from endpoint: ${endpoint}`);
       return url;
     } catch (error) {
       console.error('Error in buildApiUrl:', error, {
@@ -120,7 +142,7 @@ export class APIClient {
       });
       
       // Fallback to a simple URL construction that should work in most cases
-      const fallback = `${window.location.origin}/api/${endpoint.replace(/^\/+|api\/+/g, '')}`;
+      const fallback = `${this.baseUrl}${this.apiPrefix}/${endpoint.replace(/^\/+|api\/+/g, '')}`;
       console.warn(`Using fallback URL: ${fallback}`);
       return fallback;
     }

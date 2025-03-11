@@ -1,12 +1,11 @@
 /**
  * ui/dialog/DialogComponent.js
  * 
- * Base component for all dialog types.
- * Provides common functionality and integration with ThemeManager.
+ * Base class that delegates to BaseDialog
+ * Maintains backward compatibility
  */
 
-import { DOMHelper } from '../helpers/domHelpers.js';
-import { EventUtils } from '../helpers/EventUtils.js';
+import { BaseDialog } from '../../core/dialog/BaseDialog.js';
 import { FormatHelpers } from '../helpers/formatHelpers.js';
 
 export class DialogComponent {
@@ -17,6 +16,45 @@ export class DialogComponent {
     this.dialogManager = dialogManager;
     this.uiManager = dialogManager.uiManager;
     this.themeManager = dialogManager.themeManager;
+    this.dialog = null;
+  }
+  
+  /**
+   * Show dialog with options
+   * 
+   * @param {Object} options - Dialog options
+   * @returns {BaseDialog} The dialog instance
+   */
+  show(options = {}) {
+    // Create BaseDialog instance
+    this.dialog = new BaseDialog({
+      title: options.title || '',
+      content: options.content || '',
+      closeOnEscape: options.closeOnEscape !== false,
+      closeOnOverlayClick: options.closeOnOverlayClick !== false,
+      showCloseButton: options.showCloseButton !== false,
+      onClose: () => {
+        if (typeof options.onClose === 'function') {
+          options.onClose();
+        }
+      },
+      ...options
+    });
+    
+    // Show dialog
+    this.dialog.show();
+    
+    // Return dialog overlay for backward compatibility
+    return this.dialog.getOverlayElement();
+  }
+  
+  /**
+   * Hide dialog
+   */
+  hide() {
+    if (this.dialog) {
+      this.dialog.hide();
+    }
   }
   
   /**
@@ -24,41 +62,15 @@ export class DialogComponent {
    * @returns {HTMLElement} The dialog overlay element
    */
   createDialogOverlay() {
-    const dialogOverlay = document.createElement('div');
-    dialogOverlay.className = 'dialog-overlay';
-    
-    // Apply styles using ThemeManager if available
-    if (this.themeManager) {
-      DOMHelper.applyGlassmorphism(dialogOverlay, {
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        position: 'fixed',
-        top: '0',
-        left: '0',
-        width: '100%',
-        height: '100%',
-        zIndex: '1000',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        backdropFilter: 'blur(3px)'
-      });
-    } else {
-      // Fallback inline styles
-      Object.assign(dialogOverlay.style, {
-        position: 'fixed',
-        top: '0',
-        left: '0',
-        width: '100%',
-        height: '100%',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        zIndex: '1000',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center'
-      });
+    // Create BaseDialog instance if not already created
+    if (!this.dialog) {
+      this.dialog = new BaseDialog();
     }
     
-    return dialogOverlay;
+    // Create overlay
+    const overlay = this.dialog.createOverlay();
+    
+    return overlay;
   }
   
   /**
@@ -69,29 +81,9 @@ export class DialogComponent {
     const dialogContent = document.createElement('div');
     dialogContent.className = 'dialog-content';
     
-    // Apply glassmorphism effect if ThemeManager is available
+    // Apply styles based on theme
     if (this.themeManager) {
-      DOMHelper.applyGlassmorphism(dialogContent, {
-        backgroundColor: 'rgba(18, 22, 36, 0.8)',
-        color: '#ffffff',
-        padding: '20px',
-        borderRadius: '8px',
-        maxWidth: '600px',
-        width: '90%',
-        maxHeight: '80vh',
-        overflowY: 'auto'
-      });
-    } else {
-      // Fallback inline styles
-      Object.assign(dialogContent.style, {
-        backgroundColor: 'white',
-        padding: '20px',
-        borderRadius: '5px',
-        maxWidth: '500px',
-        width: '90%',
-        maxHeight: '80vh',
-        overflowY: 'auto'
-      });
+      dialogContent.classList.add('theme-dialog-content');
     }
     
     return dialogContent;
@@ -105,36 +97,35 @@ export class DialogComponent {
    * @returns {HTMLElement} The created button
    */
   addCloseButton(container, onClose) {
-    const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'button-container';
-    buttonContainer.style.textAlign = 'right';
-    buttonContainer.style.marginTop = '15px';
-    
-    const closeButton = document.createElement('button');
-    closeButton.textContent = 'Close';
-    closeButton.className = 'dialog-btn';
-    
-    if (this.themeManager) {
-      // Add the theme class for styling
-      closeButton.classList.add('theme-btn');
-    } else {
-      // Fallback inline styles
-      closeButton.style.padding = '8px 16px';
+    // Create BaseDialog instance if not already created
+    if (!this.dialog) {
+      this.dialog = new BaseDialog();
     }
     
-    closeButton.addEventListener('click', onClose);
-    
-    // Add ripple effect if EventUtils is available
-    if (EventUtils && typeof EventUtils.createRippleEffect === 'function') {
-      closeButton.addEventListener('click', (e) => {
-        EventUtils.createRippleEffect(e);
-      });
+    // Use BaseDialog's addCloseButton method
+    return this.dialog.addCloseButton(container, onClose);
+  }
+  
+  /**
+   * Set dialog content
+   * 
+   * @param {string|HTMLElement} content - Dialog content
+   */
+  setContent(content) {
+    if (this.dialog) {
+      this.dialog.setContent(content);
     }
-    
-    buttonContainer.appendChild(closeButton);
-    container.appendChild(buttonContainer);
-    
-    return closeButton;
+  }
+  
+  /**
+   * Set dialog title
+   * 
+   * @param {string} title - Dialog title
+   */
+  setTitle(title) {
+    if (this.dialog) {
+      this.dialog.setTitle(title);
+    }
   }
   
   /**

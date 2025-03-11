@@ -1,10 +1,12 @@
 /**
  * ui/dialog/DialogManager.js
  * 
- * Manages dialogs and modal interactions with ThemeManager integration.
- * Coordinates display of graph selection, workflow execution progress, and confirmation dialogs.
+ * Compatibility wrapper around DialogService
+ * Maintains backward compatibility with existing code
  */
 
+import { dialogService } from '../../core/dialog/DialogService.js';
+import { dialogController } from '../../core/dialog/DialogController.js';
 import { GraphSelectionDialog } from './GraphSelectionDialog.js';
 import { WorkflowProgressDialog } from './WorkflowProgressDialog.js';
 import { ConfirmationDialog } from './ConfirmationDialog.js';
@@ -17,34 +19,77 @@ export class DialogManager {
     constructor(uiManager) {
       this.uiManager = uiManager;
       this.themeManager = uiManager.themeManager;
-      this.activeDialogs = new Set();
+      this.activeDialogs = new Map(); // Changed to Map to store dialog instances by ID
       
       // Initialize dialog components
       this.graphSelectionDialog = new GraphSelectionDialog(this);
       this.workflowProgressDialog = new WorkflowProgressDialog(this);
       this.confirmationDialog = new ConfirmationDialog(this);
+      
+      // Register dialog types with the service if not already registered
+      this._registerDialogTypes();
+    }
+    
+    /**
+     * Register dialog types with the DialogService
+     * @private
+     */
+    _registerDialogTypes() {
+      // Only register if not already registered
+      if (!dialogService.isRegistered('graphSelection')) {
+        dialogService.register('graphSelection', (options) => new GraphSelectionDialog(this));
+      }
+      
+      if (!dialogService.isRegistered('workflowProgress')) {
+        dialogService.register('workflowProgress', (options) => new WorkflowProgressDialog(this));
+      }
+      
+      if (!dialogService.isRegistered('confirmation')) {
+        dialogService.register('confirmation', (options) => new ConfirmationDialog(this));
+      }
+    }
+    
+    /**
+     * Show a dialog with options
+     * 
+     * @param {Object} options - Dialog options
+     * @returns {Object} Dialog instance
+     */
+    showDialog(options) {
+      const dialog = dialogController.openDialog(options.type || 'base', options);
+      this.activeDialogs.set(dialog.getId(), dialog);
+      return dialog;
     }
     
     /**
      * Show a dialog to select a graph to load
      * 
      * @param {Array} graphs - Array of available graphs
+     * @param {Function} onSelect - Callback when a graph is selected
      * @returns {HTMLElement} The dialog overlay element
      */
-    showGraphSelectionDialog(graphs) {
-      const dialog = this.graphSelectionDialog.show(graphs);
-      this.activeDialogs.add(dialog);
+    showGraphSelectionDialog(graphs, onSelect) {
+      const dialog = this.graphSelectionDialog.show(graphs, onSelect);
+      this.activeDialogs.set(dialog.getId ? dialog.getId() : Date.now(), dialog);
       return dialog;
     }
     
     /**
      * Show a dialog to display workflow execution progress
      * 
+     * @param {Object} workflow - Workflow data
      * @returns {Object} Dialog elements including overlay, dialog, and content
      */
-    showWorkflowProgressDialog() {
-      const dialog = this.workflowProgressDialog.show();
-      this.activeDialogs.add(dialog.overlay);
+    showWorkflowProgressDialog(workflow) {
+      const dialog = this.workflowProgressDialog.show(workflow);
+      
+      // Handle both new and legacy dialog formats
+      if (dialog.getId) {
+        this.activeDialogs.set(dialog.getId(), dialog);
+      } else if (dialog.overlay) {
+        this.activeDialogs.set(Date.now(), dialog);
+      }
+      
       return dialog;
     }
     
@@ -78,29 +123,78 @@ export class DialogManager {
      */
     showConfirmDialog(message, onConfirm, onCancel = null) {
       const dialog = this.confirmationDialog.show(message, onConfirm, onCancel);
-      this.activeDialogs.add(dialog);
+      
+      // Handle both new and legacy dialog formats
+      if (dialog.getId) {
+        this.activeDialogs.set(dialog.getId(), dialog);
+      } else {
+        this.activeDialogs.set(Date.now(), dialog);
+      }
+      
       return dialog;
     }
     
     /**
      * Remove a dialog from the DOM and tracking list
      * 
-     * @param {HTMLElement} dialog - The dialog element to remove
+     * @param {HTMLElement|Object} dialog - The dialog element or instance to remove
      */
     removeDialog(dialog) {
-      if (document.body.contains(dialog)) {
-        document.body.removeChild(dialog);
+      // Handle both new dialog instances and legacy DOM elements
+      if (dialog.hide) {
+        // New dialog instance
+        dialog.hide();
+        this.activeDialogs.delete(dialog.getId());
+      } else if (dialog.getId) {
+        // New dialog instance by ID
+        this.activeDialogs.delete(dialog.getId());
+        dialogService.hideDialog(dialog.getId());
+      } else {
+        // Legacy DOM element
+        if (document.body.contains(dialog)) {
+          document.body.removeChild(dialog);
+        }
+        
+        // Find and remove from activeDialogs
+        for (const [id, activeDialog] of this.activeDialogs.entries()) {
+          if (activeDialog === dialog || 
+              (activeDialog.overlay && activeDialog.overlay === dialog)) {
+            this.activeDialogs.delete(id);
+            break;
+          }
+        }
       }
-      this.activeDialogs.delete(dialog);
+    }
+    
+    /**
+     * Hide a specific dialog by ID
+     * 
+     * @param {string} id - Dialog ID
+     * @returns {Promise} Promise that resolves when dialog is hidden
+     */
+    hideDialog(id) {
+      const dialog = this.activeDialogs.get(id);
+      
+      if (dialog) {
+        this.removeDialog(dialog);
+      }
+      
+      return dialogService.hideDialog(id);
     }
     
     /**
      * Close all active dialogs
      */
     closeAllDialogs() {
+      // Close all dialogs using DialogService
+      dialogService.hideAll();
+      
+      // Also handle legacy dialogs
       this.activeDialogs.forEach(dialog => {
         this.removeDialog(dialog);
       });
+      
+      this.activeDialogs.clear();
     }
     
     /**
@@ -108,7 +202,9 @@ export class DialogManager {
      */
     hideActiveDialog() {
       if (this.activeDialogs.size > 0) {
-        this.removeDialog([...this.activeDialogs][this.activeDialogs.size - 1]);
+        const lastDialogId = Array.from(this.activeDialogs.keys()).pop();
+        const lastDialog = this.activeDialogs.get(lastDialogId);
+        this.removeDialog(lastDialog);
       }
     }
     
@@ -120,5 +216,18 @@ export class DialogManager {
      */
     escapeHtml(unsafe) {
       return FormatHelpers.escapeHtml(unsafe);
+    }
+    
+    /**
+     * Get singleton instance
+     * 
+     * @returns {DialogManager} Singleton instance
+     */
+    static getInstance() {
+      if (!DialogManager.instance) {
+        DialogManager.instance = new DialogManager();
+      }
+      
+      return DialogManager.instance;
     }
 }

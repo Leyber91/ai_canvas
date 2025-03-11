@@ -1,11 +1,12 @@
 /**
  * ui/dialog/ConfirmationDialog.js
  * 
- * Specialized dialog component for confirmation prompts.
+ * Extends DialogComponent for backward compatibility
+ * Uses new ConfirmationTemplate internally
  */
 
 import { DialogComponent } from './DialogComponent.js';
-import { EventUtils } from '../helpers/EventUtils.js';
+import { ConfirmationTemplate } from '../../core/dialog/templates/ConfirmationTemplate.js';
 
 export class ConfirmationDialog extends DialogComponent {
   /**
@@ -21,111 +22,80 @@ export class ConfirmationDialog extends DialogComponent {
    * @param {string} message - The confirmation message
    * @param {Function} onConfirm - Function to call when confirmed
    * @param {Function} onCancel - Function to call when cancelled
-   * @returns {HTMLElement} The dialog overlay element
+   * @param {Object} options - Additional options
+   * @returns {BaseDialog} The dialog instance
    */
-  show(message, onConfirm, onCancel = null) {
-    // Create dialog overlay
-    const dialogOverlay = this.createDialogOverlay();
+  show(message, onConfirm, onCancel = null, options = {}) {
+    // Create options for the template
+    const templateOptions = {
+      message,
+      confirmText: options.confirmText || 'Confirm',
+      cancelText: options.cancelText || 'Cancel',
+      onConfirm,
+      onCancel,
+      icon: options.icon || null,
+      type: options.type || 'default',
+      showCancel: options.showCancel !== false,
+      confirmButtonClass: options.confirmButtonClass || '',
+      cancelButtonClass: options.cancelButtonClass || '',
+      messageClass: options.messageClass || '',
+      markdown: options.markdown !== false
+    };
     
-    // Create dialog content
-    const dialog = this.createDialogContent();
+    // Create content using the template
+    const content = ConfirmationTemplate.render(templateOptions);
     
-    // Add message
-    const messageElement = document.createElement('p');
-    messageElement.textContent = message;
-    dialog.appendChild(messageElement);
-    
-    // Add buttons
-    this.addConfirmButtons(dialog, dialogOverlay, onConfirm, onCancel);
-    
-    // Add dialog to overlay
-    dialogOverlay.appendChild(dialog);
-    
-    // Add to document
-    document.body.appendChild(dialogOverlay);
-    
-    // Add escape key handler to cancel
-    this.addEscapeKeyHandler(dialogOverlay, onCancel);
-    
-    return dialogOverlay;
+    // Show dialog with the content
+    return super.show({
+      title: options.title || '',
+      content,
+      closeOnEscape: options.closeOnEscape !== false,
+      closeOnOverlayClick: options.closeOnOverlayClick !== false,
+      showCloseButton: options.showCloseButton !== false,
+      width: options.width || '400px',
+      height: options.height || 'auto',
+      className: options.className || 'confirmation-dialog',
+      onClose: () => {
+        if (onCancel && typeof onCancel === 'function') {
+          onCancel();
+        }
+      }
+    });
   }
   
   /**
-   * Add confirmation buttons to the dialog
+   * Set message
    * 
-   * @param {HTMLElement} dialog - Dialog element
-   * @param {HTMLElement} dialogOverlay - Dialog overlay element
-   * @param {Function} onConfirm - Confirm callback
-   * @param {Function} onCancel - Cancel callback
+   * @param {string} message - New message
    */
-  addConfirmButtons(dialog, dialogOverlay, onConfirm, onCancel) {
-    const buttonContainer = document.createElement('div');
-    buttonContainer.className = 'button-container';
-    
-    if (!this.themeManager) {
-      Object.assign(buttonContainer.style, {
-        display: 'flex',
-        justifyContent: 'flex-end',
-        marginTop: '20px',
-        gap: '10px'
-      });
+  setMessage(message) {
+    if (this.dialog) {
+      const messageElement = this.dialog.getContentElement().querySelector('.confirmation-dialog-message');
+      
+      if (messageElement) {
+        messageElement.textContent = message;
+      }
     }
-    
-    // Cancel button
-    const cancelButton = document.createElement('button');
-    cancelButton.textContent = 'Cancel';
-    cancelButton.className = 'cancel-btn';
-    
-    if (this.themeManager) {
-      cancelButton.classList.add('theme-btn', 'secondary-btn');
-    } else {
-      cancelButton.style.padding = '8px 16px';
+  }
+  
+  /**
+   * Set button text
+   * 
+   * @param {string} confirmText - Confirm button text
+   * @param {string} cancelText - Cancel button text
+   */
+  setButtons(confirmText, cancelText) {
+    if (this.dialog) {
+      const confirmButton = this.dialog.getContentElement().querySelector('.confirmation-dialog-confirm');
+      const cancelButton = this.dialog.getContentElement().querySelector('.confirmation-dialog-cancel');
+      
+      if (confirmButton && confirmText) {
+        confirmButton.textContent = confirmText;
+      }
+      
+      if (cancelButton && cancelText) {
+        cancelButton.textContent = cancelText;
+      }
     }
-    
-    cancelButton.addEventListener('click', () => {
-      this.dialogManager.removeDialog(dialogOverlay);
-      if (onCancel) onCancel();
-    });
-    
-    // Add ripple effect if available
-    if (EventUtils && typeof EventUtils.createRippleEffect === 'function') {
-      cancelButton.addEventListener('click', (e) => {
-        EventUtils.createRippleEffect(e);
-      });
-    }
-    
-    // Confirm button
-    const confirmButton = document.createElement('button');
-    confirmButton.textContent = 'Confirm';
-    confirmButton.className = 'confirm-btn';
-    
-    if (this.themeManager) {
-      confirmButton.classList.add('theme-btn', 'primary-btn');
-    } else {
-      Object.assign(confirmButton.style, {
-        padding: '8px 16px',
-        backgroundColor: '#3498db',
-        color: 'white',
-        border: 'none',
-        borderRadius: '4px',
-        cursor: 'pointer'
-      });
-    }
-    
-    confirmButton.addEventListener('click', () => {
-      this.dialogManager.removeDialog(dialogOverlay);
-      onConfirm();
-    });
-    
-    // Add ripple effect if available
-    if (EventUtils && typeof EventUtils.createRippleEffect === 'function') {
-      confirmButton.addEventListener('click', (e) => {
-        EventUtils.createRippleEffect(e);
-      });
-    }
-    
-    buttonContainer.appendChild(cancelButton);
-    buttonContainer.appendChild(confirmButton);
-    dialog.appendChild(buttonContainer);
   }
 }
