@@ -1,9 +1,10 @@
 /**
  * ui/panel/PanelStateManager.js
  * 
- * Centralized manager for panel states across the application.
- * Provides a single source of truth for panel expansion states.
+ * Compatibility wrapper around the new StateManager.
+ * Maintains backward compatibility while using the new state management system.
  */
+import { stateManager } from '../../core/state/StateManager.js';
 export class PanelStateManager {
     /**
      * @param {Object} options - Configuration options
@@ -14,11 +15,29 @@ export class PanelStateManager {
         this.eventBus = options.eventBus;
         
         // Initialize panel states with defaults and any provided initial states
+        // This is kept for backward compatibility, but we'll use StateManager internally
         this.panelStates = {
             workflow: { expanded: false },
             conversation: { expanded: true },
             ...((options.initialStates || {}))
         };
+        
+        // Sync initial states with the new StateManager
+        this.syncWithStateManager();
+    }
+    
+    /**
+     * Sync panel states with the new StateManager
+     * @private
+     */
+    syncWithStateManager() {
+        // For each panel type, sync the state with the new StateManager
+        Object.entries(this.panelStates).forEach(([panelType, state]) => {
+            // Only set if different to avoid circular updates
+            if (stateManager.isPanelExpanded(panelType) !== state.expanded) {
+                stateManager.setPanelExpanded(panelType, state.expanded);
+            }
+        });
     }
     
     /**
@@ -28,7 +47,17 @@ export class PanelStateManager {
      * @returns {Object} Panel state object
      */
     getPanelState(panelType) {
-        return this.panelStates[panelType] || { expanded: true };
+        // Get state from the new StateManager
+        const expanded = stateManager.isPanelExpanded(panelType);
+        
+        // Update local state for backward compatibility
+        if (!this.panelStates[panelType]) {
+            this.panelStates[panelType] = { expanded: true };
+        } else {
+            this.panelStates[panelType].expanded = expanded;
+        }
+        
+        return this.panelStates[panelType];
     }
     
     /**
@@ -49,6 +78,11 @@ export class PanelStateManager {
             ...state
         };
         
+        // Update the new StateManager
+        if (state.expanded !== undefined) {
+            stateManager.setPanelExpanded(panelType, state.expanded);
+        }
+        
         // Publish state change event if event bus available
         if (this.eventBus) {
             this.eventBus.publish(`panel:state-changed`, {
@@ -65,10 +99,20 @@ export class PanelStateManager {
      * @returns {boolean} The new expanded state
      */
     togglePanelExpanded(panelType) {
-        const currentState = this.getPanelState(panelType);
-        const newExpandedState = !currentState.expanded;
+        // Use the new StateManager to toggle
+        const newExpandedState = stateManager.togglePanelExpanded(panelType);
         
-        this.setPanelState(panelType, { expanded: newExpandedState });
+        // Update local state for backward compatibility
+        this.panelStates[panelType] = this.panelStates[panelType] || { expanded: true };
+        this.panelStates[panelType].expanded = newExpandedState;
+        
+        // Publish state change event if event bus available
+        if (this.eventBus) {
+            this.eventBus.publish(`panel:state-changed`, {
+                panelType,
+                state: this.panelStates[panelType]
+            });
+        }
         
         return newExpandedState;
     }
@@ -80,7 +124,20 @@ export class PanelStateManager {
      * @param {boolean} expanded - The new expanded state
      */
     setPanelExpanded(panelType, expanded) {
-        this.setPanelState(panelType, { expanded });
+        // Use the new StateManager
+        stateManager.setPanelExpanded(panelType, expanded);
+        
+        // Update local state for backward compatibility
+        this.panelStates[panelType] = this.panelStates[panelType] || { expanded: true };
+        this.panelStates[panelType].expanded = expanded;
+        
+        // Publish state change event if event bus available
+        if (this.eventBus) {
+            this.eventBus.publish(`panel:state-changed`, {
+                panelType,
+                state: this.panelStates[panelType]
+            });
+        }
     }
     
     /**
@@ -90,7 +147,8 @@ export class PanelStateManager {
      * @returns {boolean} Whether the panel is expanded
      */
     isPanelExpanded(panelType) {
-        return this.getPanelState(panelType).expanded;
+        // Use the new StateManager
+        return stateManager.isPanelExpanded(panelType);
     }
 }
 

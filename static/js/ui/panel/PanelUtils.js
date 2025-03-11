@@ -1,10 +1,11 @@
 /**
  * ui/panel/PanelUtils.js
  * 
- * Shared utilities for panel management and styling.
- * Consolidates common panel-related functionality used across different panel managers.
+ * Compatibility wrapper around core utilities for panel management and styling.
+ * Delegates to core utilities while maintaining backward compatibility.
  */
 import { DOMHelper } from '../helpers/domHelpers.js';
+import { StyleUtils } from '../../core/utils/StyleUtils.js';
 
 export class PanelUtils {
     /**
@@ -17,23 +18,8 @@ export class PanelUtils {
      * @param {number} options.blurAmount - Blur amount in pixels
      */
     static applyGlassmorphism(element, options = {}) {
-        if (!element) return;
-        
-        const {
-            backgroundColor = 'rgba(18, 22, 36, 0.7)',
-            borderColor = 'rgba(255, 255, 255, 0.1)',
-            blurAmount = 10
-        } = options;
-        
-        // Apply styles
-        Object.assign(element.style, {
-            backgroundColor,
-            backdropFilter: `blur(${blurAmount}px)`,
-            WebkitBackdropFilter: `blur(${blurAmount}px)`,
-            border: `1px solid ${borderColor}`,
-            borderRadius: '8px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-        });
+        // Delegate to StyleUtils
+        return StyleUtils.applyGlassmorphism(element, options);
     }
     
     /**
@@ -43,11 +29,16 @@ export class PanelUtils {
      * @param {Object} options - Scrollbar options
      */
     static createPanelScrollbar(element, options = {}) {
-        // Uses DOMHelper's createCustomScrollbar
-        DOMHelper.createCustomScrollbar(element, {
+        // Default panel scrollbar options
+        const defaultOptions = {
             width: '5px',
             thumbColor: 'rgba(52, 152, 219, 0.5)',
-            thumbHoverColor: 'rgba(52, 152, 219, 0.8)',
+            thumbHoverColor: 'rgba(52, 152, 219, 0.8)'
+        };
+        
+        // Delegate to StyleUtils
+        return StyleUtils.createCustomScrollbar(element, {
+            ...defaultOptions,
             ...options
         });
     }
@@ -69,7 +60,7 @@ export class PanelUtils {
             container.className = className;
             
             // Apply default styles
-            Object.assign(container.style, {
+            StyleUtils.applyStyles(container, {
                 position: 'fixed',
                 zIndex: '900',
                 overflowY: 'auto',
@@ -104,5 +95,17 @@ export class PanelUtils {
         
         // Update expanded attribute
         titleElement.setAttribute('data-expanded', expanded ? 'true' : 'false');
+    }
+    
+    /**
+     * Apply styles to an element
+     * 
+     * @param {HTMLElement} element - Target element
+     * @param {Object} styles - CSS styles object
+     * @returns {HTMLElement} The styled element
+     */
+    static applyStyles(element, styles) {
+        // Delegate to StyleUtils
+        return StyleUtils.applyStyles(element, styles);
     }
 }

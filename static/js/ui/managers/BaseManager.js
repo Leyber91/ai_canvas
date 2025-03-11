@@ -1,10 +1,14 @@
 /**
  * ui/managers/BaseManager.js
  * 
- * Base class for UI managers with common functionality for DOM access,
- * event handling, and error management.
+ * Compatibility wrapper around BaseComponent for UI managers.
+ * Maintains backward compatibility while using the new component system.
  */
 import { DOMElementRegistry } from '../registry/DOMElementRegistry.js';
+import { BaseComponent } from '../../core/component/BaseComponent.js';
+import { EventBehavior } from '../../core/component/behaviors/EventBehavior.js';
+import { DOMBehavior } from '../../core/component/behaviors/DOMBehavior.js';
+import { ErrorHandlingBehavior } from '../../core/component/behaviors/ErrorHandlingBehavior.js';
 
 export class BaseManager {
   /**
@@ -14,6 +18,9 @@ export class BaseManager {
    * @param {EventBus} options.eventBus - Event bus (optional)
    */
   constructor(options = {}) {
+    // Store original options
+    this.options = options;
+    
     // Option 1: Use provided UIManager
     if (options.uiManager) {
       this.uiManager = options.uiManager;
@@ -27,14 +34,21 @@ export class BaseManager {
       this.registry = options.registry || DOMElementRegistry.getInstance();
     }
     
-    // Store event cleanup handlers
-    this.eventCleanupHandlers = [];
+    // Create internal component
+    this._component = new BaseComponent({
+      name: options.name || this.constructor.name,
+      eventBus: this.eventBus,
+      parent: this.uiManager,
+      behaviors: [
+        EventBehavior,
+        DOMBehavior,
+        ErrorHandlingBehavior
+      ]
+    });
     
-    // Local elements cache
-    this.elements = {};
-    
-    // Error handling control flag to prevent recursion
-    this.handlingError = false;
+    // Forward component properties to this manager
+    this.elements = this._component.elements;
+    this.initialized = false;
     
     // Bind methods to preserve this context
     this.findElement = this.findElement.bind(this);
@@ -46,7 +60,12 @@ export class BaseManager {
    * Initialize the manager
    */
   initialize() {
+    if (this.initialized) return;
+    
     try {
+      // Initialize component first
+      this._component.initialize();
+      
       // Find DOM elements
       this.findDOMElements();
       
@@ -55,6 +74,8 @@ export class BaseManager {
       
       // Subscribe to events
       this.subscribeToEvents();
+      
+      this.initialized = true;
     } catch (error) {
       this.handleError(error, 'initialize');
     }
@@ -97,12 +118,18 @@ export class BaseManager {
       return this.elements[key];
     }
     
-    // Find element in registry
-    const element = this.registry.getElement(key, required);
+    // Try to find element using component's findElement
+    const element = this._component.findElement(key, required);
     
-    // Cache locally if found
-    if (element) {
-      this.elements[key] = element;
+    // If not found, try registry as fallback
+    if (!element && this.registry) {
+      const registryElement = this.registry.getElement(key, required);
+      
+      // Cache locally if found
+      if (registryElement) {
+        this.elements[key] = registryElement;
+        return registryElement;
+      }
     }
     
     return element;
@@ -116,16 +143,22 @@ export class BaseManager {
    * @returns {Object} Map of keys to elements
    */
   findElements(keys, required = false) {
-    const result = {};
+    // Use component's findElements if it accepts array of keys
+    if (Array.isArray(keys)) {
+      const result = {};
+      
+      keys.forEach(key => {
+        const element = this.findElement(key, required);
+        if (element) {
+          result[key] = element;
+        }
+      });
+      
+      return result;
+    }
     
-    keys.forEach(key => {
-      const element = this.findElement(key, required);
-      if (element) {
-        result[key] = element;
-      }
-    });
-    
-    return result;
+    // Otherwise, delegate to component's findElements
+    return this._component.findElements(keys, required);
   }
   
   /**
@@ -137,55 +170,8 @@ export class BaseManager {
    * @returns {HTMLElement} Created element
    */
   createElement(tagName, options = {}, children = []) {
-    const element = document.createElement(tagName);
-    
-    // Apply options
-    if (options.className) {
-      element.className = options.className;
-    }
-    
-    if (options.id) {
-      element.id = options.id;
-    }
-    
-    if (options.attributes) {
-      Object.entries(options.attributes).forEach(([attr, value]) => {
-        element.setAttribute(attr, value);
-      });
-    }
-    
-    if (options.innerHTML !== undefined) {
-      element.innerHTML = options.innerHTML;
-    }
-    
-    if (options.textContent !== undefined) {
-      element.textContent = options.textContent;
-    }
-    
-    if (options.style) {
-      Object.assign(element.style, options.style);
-    }
-    
-    // Add event listeners
-    if (options.events) {
-      Object.entries(options.events).forEach(([event, handler]) => {
-        element.addEventListener(event, handler);
-      });
-    }
-    
-    // Append children
-    children.forEach(child => {
-      if (child) {
-        element.appendChild(child);
-      }
-    });
-    
-    // Register element with a key if provided
-    if (options.key) {
-      this.elements[options.key] = element;
-    }
-    
-    return element;
+    // Delegate to component's createElement
+    return this._component.createElement(tagName, options, children);
   }
   
   /**
@@ -198,23 +184,11 @@ export class BaseManager {
    * @returns {Function} Cleanup function
    */
   addEventListenerWithCleanup(element, eventType, handler, options = {}) {
-    if (!element) return () => {};
-    
     // Bind the handler to this instance if not already bound
     const boundHandler = handler.bind ? handler.bind(this) : handler;
     
-    // Add event listener
-    element.addEventListener(eventType, boundHandler, options);
-    
-    // Create cleanup function
-    const cleanup = () => {
-      element.removeEventListener(eventType, boundHandler, options);
-    };
-    
-    // Store for later cleanup
-    this.eventCleanupHandlers.push(cleanup);
-    
-    return cleanup;
+    // Delegate to component's addEventListenerWithCleanup
+    return this._component.addEventListenerWithCleanup(element, eventType, boundHandler, options);
   }
   
   /**
@@ -225,23 +199,11 @@ export class BaseManager {
    * @returns {Function} Cleanup function
    */
   subscribeWithCleanup(eventName, handler) {
-    if (!this.eventBus) return () => {};
-    
     // Bind the handler to this instance if not already bound
     const boundHandler = handler.bind ? handler.bind(this) : handler;
     
-    // Subscribe to event
-    this.eventBus.subscribe(eventName, boundHandler, this);
-    
-    // Create cleanup function
-    const cleanup = () => {
-      this.eventBus.unsubscribe(eventName, boundHandler, this);
-    };
-    
-    // Store for later cleanup
-    this.eventCleanupHandlers.push(cleanup);
-    
-    return cleanup;
+    // Delegate to component's subscribeWithCleanup
+    return this._component.subscribeWithCleanup(eventName, boundHandler);
   }
   
   /**
@@ -251,8 +213,13 @@ export class BaseManager {
    * @param {string} context - Error context
    */
   logError(message, context = '') {
-    const errorContext = context ? `[${this.constructor.name}:${context}] ` : `[${this.constructor.name}] `;
-    console.error(`${errorContext}${message}`);
+    // Delegate to component's logError
+    if (this._component.logError) {
+      this._component.logError(message, context);
+    } else {
+      const errorContext = context ? `[${this.constructor.name}:${context}] ` : `[${this.constructor.name}] `;
+      console.error(`${errorContext}${message}`);
+    }
   }
   
   /**
@@ -262,56 +229,8 @@ export class BaseManager {
    * @param {string} context - Error context
    */
   handleError(error, context = '') {
-    // Prevent recursive error handling
-    if (this.handlingError) {
-      console.warn(`[${this.constructor.name}] Skipping recursive error handling.`);
-      return;
-    }
-    
-    this.handlingError = true;
-    
-    try {
-      // Improved error message extraction
-      let errorMessage;
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error && typeof error === 'object') {
-        // Handle plain objects better
-        try {
-          errorMessage = JSON.stringify(error);
-        } catch (e) {
-          errorMessage = 'Object error (see console for details)';
-          console.error('Full error object:', error);
-        }
-      } else {
-        errorMessage = 'Unknown error occurred';
-      }
-      
-      const errorContext = context ? `[${this.constructor.name}:${context}] ` : `[${this.constructor.name}] `;
-      
-      console.error(`${errorContext}Error: ${errorMessage}`);
-      
-      // Only publish to event bus if we have one available, 
-      // and we're not already handling an error from the event bus
-      if (this.eventBus) {
-        try {
-          this.eventBus.publish('error', {
-            message: errorMessage,
-            context: `${this.constructor.name}${context ? `:${context}` : ''}`,
-            error: error instanceof Error ? error : new Error(errorMessage),
-            timestamp: Date.now()
-          });
-        } catch (eventBusError) {
-          // If publishing to the event bus itself causes an error, just log it
-          console.error(`Error publishing to event bus: ${eventBusError.message}`);
-        }
-      }
-    } finally {
-      this.handlingError = false;
-    }
+    // Delegate to component's handleError
+    this._component.handleError(error, context);
   }
   
   /**
@@ -322,28 +241,18 @@ export class BaseManager {
    * @param {number} duration - Notification duration in ms
    */
   showNotification(message, type = 'info', duration = 3000) {
-    if (this.uiManager && this.uiManager.showNotification) {
-      this.uiManager.showNotification(message, type, duration);
-    }
+    // Delegate to component's showNotification
+    this._component.showNotification(message, type, duration);
   }
   
   /**
    * Clean up resources
    */
   destroy() {
-    // Clean up event listeners
-    this.eventCleanupHandlers.forEach(cleanup => {
-      try {
-        cleanup();
-      } catch (error) {
-        console.warn(`Error during cleanup: ${error.message}`);
-      }
-    });
+    // Delegate to component's destroy
+    this._component.destroy();
     
-    // Clear event cleanup handlers
-    this.eventCleanupHandlers = [];
-    
-    // Clear element references
-    this.elements = {};
+    // Clear references
+    this.initialized = false;
   }
 }

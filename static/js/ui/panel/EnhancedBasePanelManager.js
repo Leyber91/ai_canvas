@@ -2,11 +2,12 @@
  * ui/panel/EnhancedBasePanelManager.js
  * 
  * Enhanced base class for panel managers with improved state management and UI consistency.
- * Integrates with PanelStateManager to provide centralized panel state tracking.
+ * Integrates with both PanelStateManager and the new StateManager for centralized state tracking.
  */
 import { BasePanelManager } from './BasePanelManager.js';
 import { panelStateManager } from './PanelStateManager.js';
 import { PanelUtils } from './PanelUtils.js';
+import { stateManager } from '../../core/state/StateManager.js';
 
 export class EnhancedBasePanelManager extends BasePanelManager {
     /**
@@ -18,9 +19,11 @@ export class EnhancedBasePanelManager extends BasePanelManager {
      * @param {Object} options.panelOptions - Additional panel-specific options
      */
     constructor(options = {}) {
-        // Initialize the base class with initial expanded state from panel state manager
+        // Get initial expanded state from both state managers for compatibility
+        // Prefer the new StateManager if available
         const initialExpanded = options.panelType ? 
-            panelStateManager.isPanelExpanded(options.panelType) : 
+            (stateManager.isPanelExpanded(options.panelType) || 
+             panelStateManager.isPanelExpanded(options.panelType)) : 
             (options.initialExpanded !== undefined ? options.initialExpanded : true);
             
         super({
@@ -33,7 +36,6 @@ export class EnhancedBasePanelManager extends BasePanelManager {
         
         // DOM elements
         this.containerElement = null;
-        this.panel = null;
         
         // Bind additional methods
         this.syncWithStateManager = this.syncWithStateManager.bind(this);
@@ -49,15 +51,16 @@ export class EnhancedBasePanelManager extends BasePanelManager {
         // Create or find container element
         this.createContainerElement();
         
-        // Subscribe to panel state changes
+        // Subscribe to panel state changes from both state managers
         if (this.eventBus) {
-            this.eventBus.subscribe('panel:state-changed', this.handlePanelStateChanged);
+            this.subscribeWithCleanup('panel:state-changed', this.handlePanelStateChanged);
+            this.subscribeWithCleanup('state:changed:panels.' + this.panelType, this.handlePanelStateChanged);
         }
         
         // Call base initialization
         super.initialize();
         
-        // Sync initial state with state manager
+        // Sync initial state with state managers
         this.syncWithStateManager();
     }
     
@@ -100,17 +103,18 @@ export class EnhancedBasePanelManager extends BasePanelManager {
     
     /**
      * Apply the current panel state to the DOM
-     * Enhanced to use panel state manager
+     * Enhanced to use both state managers
      */
     applyPanelState() {
         // Get panel element
         const panel = this.getPanelElement();
         if (!panel) return;
         
-        // Get current state from state manager
-        const expanded = this.panelType ? 
-            panelStateManager.isPanelExpanded(this.panelType) : 
-            this.expanded;
+        // Get current state from state managers (prefer new StateManager)
+        const expanded = this.isExpanded();
+        
+        // Update local state
+        this.expanded = expanded;
         
         // Update DOM
         if (expanded) {
@@ -128,15 +132,16 @@ export class EnhancedBasePanelManager extends BasePanelManager {
     
     /**
      * Toggle panel expansion state
-     * Enhanced to use panel state manager
+     * Enhanced to use both state managers
      */
     togglePanel() {
         if (this.panelType) {
-            // Use state manager to toggle state
+            // Use both state managers to toggle state
+            stateManager.togglePanelExpanded(this.panelType);
             panelStateManager.togglePanelExpanded(this.panelType);
             
             // Update local state
-            this.expanded = panelStateManager.isPanelExpanded(this.panelType);
+            this.expanded = this.isExpanded();
         } else {
             // Fallback to direct toggle
             this.expanded = !this.expanded;
@@ -147,16 +152,19 @@ export class EnhancedBasePanelManager extends BasePanelManager {
         
         // Publish event
         this.publishToggleEvent();
+        
+        // Call base class method to ensure component is updated
+        super.togglePanel();
     }
     
     /**
-     * Sync panel state with state manager
+     * Sync panel state with state managers
      */
     syncWithStateManager() {
         if (!this.panelType) return;
         
-        // Get current state from state manager
-        const expanded = panelStateManager.isPanelExpanded(this.panelType);
+        // Get current state from state managers (prefer new StateManager)
+        const expanded = this.isExpanded();
         
         // Update local state if different
         if (this.expanded !== expanded) {
@@ -171,11 +179,19 @@ export class EnhancedBasePanelManager extends BasePanelManager {
      * @param {Object} data - Event data
      */
     handlePanelStateChanged(data) {
-        // Only handle events for this panel type
-        if (data.panelType !== this.panelType) return;
+        // Handle events from both state managers
+        if (data.panelType && data.panelType !== this.panelType) return;
         
-        // Update local state
-        this.expanded = data.state.expanded;
+        // For new StateManager events
+        if (data.path && data.path.includes(this.panelType)) {
+            // Update local state
+            this.expanded = data.newValue.expanded;
+        } 
+        // For legacy PanelStateManager events
+        else if (data.state) {
+            // Update local state
+            this.expanded = data.state.expanded;
+        }
         
         // Apply state to DOM
         this.applyPanelState();
@@ -185,26 +201,23 @@ export class EnhancedBasePanelManager extends BasePanelManager {
     }
     
     /**
-     * Override isExpanded to use state manager
+     * Override isExpanded to use both state managers
      * 
      * @returns {boolean} Whether the panel is expanded
      */
     isExpanded() {
-        return this.panelType ? 
-            panelStateManager.isPanelExpanded(this.panelType) : 
-            this.expanded;
+        if (!this.panelType) return this.expanded;
+        
+        // Try new StateManager first, then fall back to legacy PanelStateManager
+        return stateManager.isPanelExpanded(this.panelType) || 
+               panelStateManager.isPanelExpanded(this.panelType);
     }
     
     /**
      * Clean up resources on destroy
      */
     destroy() {
-        // Unsubscribe from panel state changes
-        if (this.eventBus) {
-            this.eventBus.unsubscribe('panel:state-changed', this.handlePanelStateChanged);
-        }
-        
-        // Call base destroy
+        // Call base destroy which will handle unsubscribing
         super.destroy();
     }
 }
