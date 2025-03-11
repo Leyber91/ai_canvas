@@ -59,11 +59,31 @@ export class UIManager extends BaseManager {
     this.notificationManager = new NotificationManager();
     this.workflowPanelManager = new WorkflowPanelManager(this);
     
-    // Bind methods
+    // Bind all the event handler methods to avoid 'this' context issues
     this.handleNodeSelected = this.handleNodeSelected.bind(this);
     this.handleNodeDeselected = this.handleNodeDeselected.bind(this);
+    this.handleNodeAdded = this.handleNodeAdded.bind(this);
+    this.handleNodeRemoved = this.handleNodeRemoved.bind(this);
     this.handleEdgeSelected = this.handleEdgeSelected.bind(this);
+    this.handleGraphLoaded = this.handleGraphLoaded.bind(this);
+    this.handleGraphSaved = this.handleGraphSaved.bind(this);
+    this.handleGraphCleared = this.handleGraphCleared.bind(this);
+    this.handleGraphChanged = this.handleGraphChanged.bind(this);
+    this.handleGraphModified = this.handleGraphModified.bind(this);
+    this.handleCyclesHighlighted = this.handleCyclesHighlighted.bind(this);
+    this.handleCyclesBroken = this.handleCyclesBroken.bind(this);
+    this.handleModelsLoaded = this.handleModelsLoaded.bind(this);
+    this.handleModelsUpdated = this.handleModelsUpdated.bind(this);
+    this.handleWorkflowExecuting = this.handleWorkflowExecuting.bind(this);
+    this.handleNodeExecuting = this.handleNodeExecuting.bind(this);
+    this.handleNodeCompleted = this.handleNodeCompleted.bind(this);
+    this.handleNodeError = this.handleNodeError.bind(this);
+    this.handleWorkflowCompleted = this.handleWorkflowCompleted.bind(this);
+    this.handleWorkflowFailed = this.handleWorkflowFailed.bind(this);
+    this.handleWorkflowInvalid = this.handleWorkflowInvalid.bind(this);
     this.handleErrorEvent = this.handleErrorEvent.bind(this);
+    this.handleAPIRequestStart = this.handleAPIRequestStart.bind(this);
+    this.handleAPIRequestEnd = this.handleAPIRequestEnd.bind(this);
   }
   
   /**
@@ -123,7 +143,9 @@ export class UIManager extends BaseManager {
       'chatMessages',
       'chatInput',
       'sendBtn',
-      'workflowControls'
+      'workflowControls',
+      'currentGraphName',
+      'graphModifiedIndicator'
     ];
     
     // Find all elements
@@ -332,6 +354,11 @@ export class UIManager extends BaseManager {
       // Disable chat input via conversation panel manager
       this.conversationPanelManager.disableChat();
       
+      // Clear node operations panel
+      if (this.nodeOperationsManager && typeof this.nodeOperationsManager.clearNodeOperations === 'function') {
+        this.nodeOperationsManager.clearNodeOperations();
+      }
+      
       // Let theme manager know about node deselection
       if (this.themeManager && typeof this.themeManager.handleNodeDeselected === 'function') {
         this.themeManager.handleNodeDeselected();
@@ -348,7 +375,6 @@ export class UIManager extends BaseManager {
    */
   handleEdgeSelected(edgeData) {
     try {
-      // Implement edge selection behavior as needed
       console.log('Edge selected:', edgeData);
       
       // Let theme manager know about edge selection
@@ -360,87 +386,401 @@ export class UIManager extends BaseManager {
     }
   }
   
-  // Placeholder for additional event handlers
-  // Add implementations as needed
-  
+  /**
+   * Handle node added event
+   * @param {Object} nodeData - Data for the added node
+   */
   handleNodeAdded(nodeData) {
     console.log('Node added:', nodeData);
+    
+    // Mark the graph as modified
+    if (this.graphManager && this.graphManager.markAsModified) {
+      this.graphManager.markAsModified();
+    }
   }
   
+  /**
+   * Handle node removed event
+   * @param {Object} nodeData - Data for the removed node
+   */
   handleNodeRemoved(nodeData) {
     console.log('Node removed:', nodeData);
+    
+    // Mark the graph as modified
+    if (this.graphManager && this.graphManager.markAsModified) {
+      this.graphManager.markAsModified();
+    }
+    
+    // Clear node operations panel
+    if (this.nodeOperationsManager && typeof this.nodeOperationsManager.clearNodeOperations === 'function') {
+      this.nodeOperationsManager.clearNodeOperations();
+    }
   }
   
+  /**
+   * Handle graph loaded event
+   * @param {Object} graphData - Data for the loaded graph
+   */
   handleGraphLoaded(graphData) {
     console.log('Graph loaded:', graphData);
+    
+    try {
+      // Ensure graph IDs are synchronized
+      if (window.syncGraphIds) {
+        window.syncGraphIds();
+      }
+      
+      // Update the graph controls to reflect the loaded graph
+      if (this.graphControlsManager) {
+        this.graphControlsManager.updateGraphStatus(
+          graphData.name || 'Unnamed Graph',
+          false // Not modified when first loaded
+        );
+      }
+      
+      // Show notification
+      this.showNotification(`Graph "${graphData.name || 'Unnamed Graph'}" loaded successfully!`, 'success');
+    } catch (error) {
+      this.handleError(error, 'handleGraphLoaded');
+    }
   }
   
+  /**
+   * Handle graph saved event
+   * @param {Object} graphData - Data for the saved graph
+   */
   handleGraphSaved(graphData) {
     console.log('Graph saved:', graphData);
+    
+    try {
+      // Ensure graph IDs are synchronized
+      if (window.syncGraphIds) {
+        window.syncGraphIds();
+      }
+      
+      // Update the graph controls to reflect the saved state
+      if (this.graphControlsManager) {
+        this.graphControlsManager.updateGraphStatus(
+          graphData.name || 'Unnamed Graph',
+          false // Not modified after saving
+        );
+      }
+      
+      // Show notification (handled in GraphControlsManager.saveGraph)
+    } catch (error) {
+      this.handleError(error, 'handleGraphSaved');
+    }
   }
   
+  /**
+   * Handle graph cleared event
+   */
   handleGraphCleared() {
     console.log('Graph cleared');
+    
+    try {
+      // Update the graph controls to reflect the cleared state
+      if (this.graphControlsManager) {
+        this.graphControlsManager.updateGraphStatus(
+          'No Graph Loaded',
+          false // Not modified when cleared
+        );
+      }
+      
+      // Clear node operations panel
+      if (this.nodeOperationsManager && typeof this.nodeOperationsManager.clearNodeOperations === 'function') {
+        this.nodeOperationsManager.clearNodeOperations();
+      }
+    } catch (error) {
+      this.handleError(error, 'handleGraphCleared');
+    }
   }
   
+  /**
+   * Handle graph changed event
+   * @param {Object} graphData - Data for the changed graph
+   */
   handleGraphChanged(graphData) {
     console.log('Graph changed:', graphData);
+    
+    try {
+      // Update the graph controls to reflect the new graph
+      if (this.graphControlsManager) {
+        this.graphControlsManager.updateGraphStatus(
+          graphData.name || 'Unnamed Graph',
+          this.graphManager ? this.graphManager.hasUnsavedChanges() : false
+        );
+      }
+      
+      // Ensure IDs are synchronized
+      if (window.syncGraphIds) {
+        window.syncGraphIds();
+      }
+    } catch (error) {
+      this.handleError(error, 'handleGraphChanged');
+    }
   }
   
+  /**
+   * Handle graph modified event
+   * @param {Object} modificationData - Data about the modification
+   */
   handleGraphModified(modificationData) {
     console.log('Graph modified:', modificationData);
+    
+    try {
+      // Update the graph controls to reflect the modified state
+      if (this.graphControlsManager) {
+        this.graphControlsManager.updateGraphStatus(
+          modificationData.name || this.graphManager.getCurrentGraphName() || 'Unnamed Graph',
+          true // Modified
+        );
+      }
+      
+      // Enable the save button
+      if (this.elements.saveGraphBtn) {
+        this.elements.saveGraphBtn.disabled = false;
+      }
+    } catch (error) {
+      this.handleError(error, 'handleGraphModified');
+    }
   }
   
+  /**
+   * Handle cycles highlighted event
+   * @param {Object} cycleData - Data about the highlighted cycles
+   */
   handleCyclesHighlighted(cycleData) {
     console.log('Cycles highlighted:', cycleData);
+    
+    // Show notification about cycles if needed
+    if (cycleData.cycles && cycleData.cycles.length > 0) {
+      this.showNotification(
+        `Found ${cycleData.cycles.length} cycles in the graph. These may cause issues with workflow execution.`,
+        'warning'
+      );
+    }
   }
   
+  /**
+   * Handle cycles broken event
+   * @param {Object} cycleData - Data about the broken cycles
+   */
   handleCyclesBroken(cycleData) {
     console.log('Cycles broken:', cycleData);
+    
+    // Show notification about broken cycles
+    if (cycleData.brokenCycles && cycleData.brokenCycles > 0) {
+      this.showNotification(
+        `Successfully broke ${cycleData.brokenCycles} cycles in the graph.`,
+        'success'
+      );
+    }
   }
   
+  /**
+   * Handle models loaded event
+   * @param {Object} modelsData - Data about the loaded models
+   */
   handleModelsLoaded(modelsData) {
     console.log('Models loaded:', modelsData);
+    
+    // Update model dropdown in node modal
+    this.nodeModalManager.updateModelOptions(modelsData);
   }
   
+  /**
+   * Handle models updated event
+   * @param {Object} modelsData - Data about the updated models
+   */
   handleModelsUpdated(modelsData) {
     console.log('Models updated:', modelsData);
+    
+    // Update model dropdown in node modal
+    this.nodeModalManager.updateModelOptions(modelsData);
   }
   
+  /**
+   * Handle workflow executing event
+   * @param {Object} executionData - Data about the workflow execution
+   */
   handleWorkflowExecuting(executionData) {
     console.log('Workflow executing:', executionData);
+    
+    // Update UI to show workflow is executing
+    if (this.workflowPanelManager) {
+      this.workflowPanelManager.updateExecutionStatus('running');
+    }
   }
   
+  /**
+   * Handle node executing event
+   * @param {Object} executionData - Data about the node execution
+   */
   handleNodeExecuting(executionData) {
     console.log('Node executing:', executionData);
+    
+    try {
+      // Verify we have valid data
+      if (!executionData || !executionData.nodeId) {
+        console.warn('Invalid execution data received in handleNodeExecuting');
+        return;
+      }
+      
+      // Update UI to show node is executing
+      if (this.workflowPanelManager && typeof this.workflowPanelManager.updateNodeExecutionStatus === 'function') {
+        this.workflowPanelManager.updateNodeExecutionStatus(executionData.nodeId, 'running');
+      } else if (this.workflowPanelManager && typeof this.workflowPanelManager.handleNodeExecuting === 'function') {
+        // Alternative method that might be available
+        this.workflowPanelManager.handleNodeExecuting(executionData);
+      } else {
+        console.warn('WorkflowPanelManager not available or missing updateNodeExecutionStatus method');
+      }
+      
+      // Also update the graph visualization if applicable
+      if (this.themeManager && typeof this.themeManager.handleNodeExecuting === 'function') {
+        this.themeManager.handleNodeExecuting(executionData);
+      } else if (this.graphManager && typeof this.graphManager.highlightExecutingNode === 'function') {
+        // Alternative direct approach
+        this.graphManager.highlightExecutingNode(executionData.nodeId);
+      }
+    } catch (error) {
+      this.handleError(error, 'handleNodeExecuting');
+    }
   }
   
+  /**
+   * Handle node completed event
+   * @param {Object} executionData - Data about the completed node
+   */
   handleNodeCompleted(executionData) {
     console.log('Node completed:', executionData);
+    
+    try {
+      // Verify we have valid data
+      if (!executionData || !executionData.nodeId) {
+        console.warn('Invalid execution data received in handleNodeCompleted');
+        return;
+      }
+      
+      // Update UI to show node completed
+      if (this.workflowPanelManager && typeof this.workflowPanelManager.updateNodeExecutionStatus === 'function') {
+        this.workflowPanelManager.updateNodeExecutionStatus(executionData.nodeId, 'completed');
+      } else if (this.workflowPanelManager && typeof this.workflowPanelManager.handleNodeCompleted === 'function') {
+        // Alternative method that might be available
+        this.workflowPanelManager.handleNodeCompleted(executionData);
+      } else {
+        console.warn('WorkflowPanelManager not available or missing update method');
+      }
+      
+      // Also update the graph visualization
+      if (this.themeManager && typeof this.themeManager.handleNodeCompleted === 'function') {
+        this.themeManager.handleNodeCompleted(executionData);
+      } else if (this.graphManager && typeof this.graphManager.markNodeCompleted === 'function') {
+        // Alternative direct approach
+        this.graphManager.markNodeCompleted(executionData.nodeId);
+      }
+    } catch (error) {
+      this.handleError(error, 'handleNodeCompleted');
+    }
   }
   
   handleNodeError(errorData) {
     console.log('Node error:', errorData);
+    
+    try {
+      // Verify we have valid data
+      if (!errorData || !errorData.nodeId) {
+        console.warn('Invalid error data received in handleNodeError');
+        return;
+      }
+      
+      // Update UI to show node error
+      if (this.workflowPanelManager && typeof this.workflowPanelManager.updateNodeExecutionStatus === 'function') {
+        this.workflowPanelManager.updateNodeExecutionStatus(errorData.nodeId, 'error');
+      } else if (this.workflowPanelManager && typeof this.workflowPanelManager.handleNodeError === 'function') {
+        // Alternative method that might be available
+        this.workflowPanelManager.handleNodeError(errorData);
+      } else {
+        console.warn('WorkflowPanelManager not available or missing update method');
+      }
+      
+      // Also update the graph visualization
+      if (this.themeManager && typeof this.themeManager.handleNodeError === 'function') {
+        this.themeManager.handleNodeError(errorData);
+      } else if (this.graphManager && typeof this.graphManager.markNodeError === 'function') {
+        // Alternative direct approach
+        this.graphManager.markNodeError(errorData.nodeId);
+      }
+      
+      // Show error notification with improved error message formatting
+      const nodeName = errorData.nodeName || errorData.nodeId || 'Unknown';
+      const errorMessage = errorData.message || 'An unknown error occurred';
+      this.showNotification(`Error in node "${nodeName}": ${errorMessage}`, 'error');
+    } catch (error) {
+      this.handleError(error, 'handleNodeError');
+    }
   }
   
+  /**
+   * Handle workflow completed event
+   * @param {Object} executionData - Data about the completed workflow
+   */
   handleWorkflowCompleted(executionData) {
     console.log('Workflow completed:', executionData);
+    
+    // Update UI to show workflow completed
+    if (this.workflowPanelManager) {
+      this.workflowPanelManager.updateExecutionStatus('completed');
+    }
+    
+    // Show success notification
+    this.showNotification('Workflow completed successfully!', 'success');
   }
   
+  /**
+   * Handle workflow failed event
+   * @param {Object} errorData - Data about the workflow failure
+   */
   handleWorkflowFailed(errorData) {
     console.log('Workflow failed:', errorData);
+    
+    // Update UI to show workflow failed
+    if (this.workflowPanelManager) {
+      this.workflowPanelManager.updateExecutionStatus('failed');
+    }
+    
+    // Show error notification
+    this.showNotification(`Workflow failed: ${errorData.message}`, 'error');
   }
   
+  /**
+   * Handle workflow invalid event
+   * @param {Object} validationData - Data about the workflow validation
+   */
   handleWorkflowInvalid(validationData) {
     console.log('Workflow invalid:', validationData);
+    
+    // Show warning notification
+    this.showNotification(`Workflow is invalid: ${validationData.message}`, 'warning');
   }
   
+  /**
+   * Handle API request start event
+   * @param {Object} requestData - Data about the API request
+   */
   handleAPIRequestStart(requestData) {
     console.log('API request start:', requestData);
+    // Show loading indicator if needed
   }
   
+  /**
+   * Handle API request end event
+   * @param {Object} requestData - Data about the API request
+   */
   handleAPIRequestEnd(requestData) {
     console.log('API request end:', requestData);
+    // Hide loading indicator if needed
   }
   
   /**
@@ -466,27 +806,43 @@ export class UIManager extends BaseManager {
     }
   }
   
-  /**
-   * Handle errors with appropriate logging and notifications
-   * 
-   * @param {Error} error - Error object
-   * @param {string} context - Error context
-   */
   handleError(error, context) {
-    const errorMessage = `Error in UI Manager (${context}): ${error.message}`;
-    console.error(errorMessage, error);
+    // Check for recursion
+    if (!this._errorStack) this._errorStack = [];
     
-    // Publish error event if we have an event bus
-    if (this.eventBus) {
-      this.eventBus.publish('error', {
-        error,
-        context: `UIManager:${context}`,
-        message: error.message,
-        // Only show UI notification for user-facing errors
-        userVisible: context !== 'internal'
-      });
+    // If we're getting too deep, bail out
+    if (this._errorStack.length > 5) {
+      console.error(`[UIManager] Error recursion detected - stack: ${this._errorStack.join(' -> ')}`);
+      console.error(`Latest error in ${context}: ${error.message}`);
+      return;
+    }
+    
+    // Add to stack
+    this._errorStack.push(context);
+    
+    try {
+      const errorMessage = `Error in UI Manager (${context}): ${error.message}`;
+      console.error(errorMessage, error);
+      
+      // Publish error event if we have an event bus
+      if (this.eventBus) {
+        this.eventBus.publish('error', {
+          error,
+          context: `UIManager:${context}`,
+          message: error.message,
+          // Only show UI notification for user-facing errors
+          userVisible: context !== 'internal'
+        });
+      }
+    } catch (secondaryError) {
+      // If we get an error handling an error, just log it directly
+      console.error('Error in error handler:', secondaryError);
+    } finally {
+      // Always remove from stack
+      this._errorStack.pop();
     }
   }
+  
   
   /**
    * Clean up resources when UIManager is destroyed
