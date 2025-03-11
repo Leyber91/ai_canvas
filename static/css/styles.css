@@ -14,6 +14,7 @@
 @import url('modules/_layout.css');
 @import url('modules/_header.css');
 @import url('modules/_buttons.css');
+@import url('./modules/_typography.css');
 
 /* Panel and component styles */
 @import url('modules/_conversation-panel.css');
@@ -23,6 +24,7 @@
 @import url('modules/_chat-section.css');
 @import url('modules/_modal.css');
 @import url('modules/_cytoscape.css');
+@import url('modules/_cytoscape-fixes.css');
 
 /* UI indicators and controls */
 @import url('modules/_loading-indicator.css');
@@ -64,7 +66,6 @@ body {
 /* Modern button styling */
 button {
   background-color: var(--theme-button-primary-bg);
-  color: var(--theme-button-primary-text);
   border: 1px solid var(--theme-button-primary-border);
   border-radius: var(--border-radius-md);
   padding: 8px 16px;

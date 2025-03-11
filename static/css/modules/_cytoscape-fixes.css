@@ -1,0 +1,50 @@
+/* _cytoscape-fixes.css */
+
+/* Ensure Cytoscape container has proper stacking context */
+#cy {
+  position: relative !important;
+  z-index: 30 !important;
+  min-height: 400px;
+}
+
+/* Make sure cytoscape container is visible over space background */
+.canvas-container {
+  position: relative;
+  z-index: 20;
+}
+
+/* Fix for canvas rendering */
+#cy canvas {
+  position: absolute !important;
+}
+
+/* Ensure space background stays behind content */
+.space-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none; /* Allow clicking through to elements below */
+  overflow: hidden;
+}
+
+/* Ensure nebulae don't interfere with UI */
+.nebula {
+  z-index: 2;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Fix for grid lines */
+.grid-lines {
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Ensure workflow panel is above background */
+.workflow-panel {
+  position: relative;
+  z-index: 35;
+}

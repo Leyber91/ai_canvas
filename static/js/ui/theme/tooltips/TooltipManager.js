@@ -6,6 +6,7 @@
  */
 
 import { tooltip } from '../../../core/theme/components/Tooltip.js';
+import { themeService } from '../../../core/theme/ThemeService.js';
 
 export class TooltipManager {
   /**
@@ -17,6 +18,12 @@ export class TooltipManager {
     
     // Ensure tooltip styles are injected
     tooltip.injectTooltipStyles();
+    
+    // Subscribe to theme changes
+    this.themeChangeUnsubscribe = themeService.subscribeToThemeChanges(() => {
+      // Update any visible tooltips when theme changes
+      this.updateTooltipTheme();
+    });
   }
   
   /**
@@ -28,15 +35,40 @@ export class TooltipManager {
   }
   
   /**
+   * Get current theme for tooltips
+   * 
+   * @private
+   * @returns {string} Current theme name ('light' or 'dark')
+   */
+  getCurrentTheme() {
+    return themeService.currentThemeName || 'dark';
+  }
+  
+  /**
+   * Update theme for all visible tooltips
+   * 
+   * @private
+   */
+  updateTooltipTheme() {
+    const activeTooltips = document.querySelectorAll('.tooltip.visible');
+    const currentTheme = this.getCurrentTheme();
+    
+    activeTooltips.forEach(tooltipElement => {
+      tooltipElement.classList.remove('theme-dark', 'theme-light');
+      tooltipElement.classList.add(`theme-${currentTheme}`);
+    });
+  }
+  
+  /**
    * Show tooltip at specified position
    * 
    * @param {Object} position - Position {x, y}
    * @param {string} content - Tooltip content
    */
   showTooltip(position, content) {
-    // Delegate to core implementation
+    // Delegate to core implementation with current theme
     tooltip.showTooltip(position, content, {
-      theme: 'dark',
+      theme: this.getCurrentTheme(),
       className: 'custom-tooltip'
     });
   }
@@ -78,11 +110,21 @@ export class TooltipManager {
    * @param {Object} options - Tooltip options
    */
   registerTooltipTarget(element, content, options = {}) {
-    // Delegate to core implementation
+    // Delegate to core implementation with current theme
     tooltip.registerTooltipTarget(element, content, {
-      theme: 'dark',
+      theme: this.getCurrentTheme(),
       className: 'custom-tooltip',
       ...options
     });
+  }
+  
+  /**
+   * Clean up resources
+   */
+  destroy() {
+    // Unsubscribe from theme changes
+    if (this.themeChangeUnsubscribe) {
+      this.themeChangeUnsubscribe();
+    }
   }
 }

@@ -1,0 +1,30 @@
+/* Add these variables to your theme-variables.css file */
+
+:root {
+  /* Status colors */
+  --status-waiting: #3498db;
+  --status-executing: #f1c40f;
+  --status-success: #2ecc71;
+  --status-error: #e74c3c;
+  --warning-color: #f39c12;
+  
+  /* Neon colors */
+  --neon-blue: #00c2ff;
+  --neon-purple: #ae00ff;
+  
+  /* Glass effects */
+  --glass-bg: rgba(18, 22, 36, 0.7);
+  --glass-border: rgba(0, 194, 255, 0.2);
+  --glass-blur: 8px;
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  
+  /* Transitions */
+  --transition-speed: 0.3s ease;
+}
+
+/* Theme-specific overrides */
+.theme-light {
+  --glass-bg: rgba(240, 245, 255, 0.7);
+  --glass-border: rgba(0, 194, 255, 0.3);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}

@@ -411,95 +411,96 @@ export class Tooltip {
     });
   }
   
-  /**
-   * Inject tooltip styles
-   */
-  injectTooltipStyles() {
-    // Check if styles already exist
-    if (document.getElementById('tooltip-styles')) {
-      return;
+/**
+ * Inject tooltip styles
+ */
+injectTooltipStyles() {
+  // Check if styles already exist
+  if (document.getElementById('tooltip-styles')) {
+    return;
+  }
+  
+  const style = document.createElement('style');
+  style.id = 'tooltip-styles';
+  
+  style.textContent = `
+    .tooltip {
+      position: fixed;
+      padding: 8px 12px;
+      border-radius: var(--borders-radius-sm, 4px);
+      font-family: var(--font-primary, "'Inter', 'Roboto', sans-serif");
+      font-size: var(--font-size-sm, 14px);
+      line-height: var(--line-height-normal, 1.5);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--animations-duration-fast, 0.2s) ease-out;
+      box-sizing: border-box;
+      max-width: 300px;
+      z-index: var(--z-tooltip, 200);
     }
     
-    const style = document.createElement('style');
-    style.id = 'tooltip-styles';
+    .tooltip.visible {
+      opacity: 1;
+    }
     
-    style.textContent = `
-      .tooltip {
-        position: fixed;
-        padding: 8px 12px;
-        border-radius: 4px;
-        font-size: 14px;
-        line-height: 1.4;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.2s ease-out;
-        box-sizing: border-box;
-        max-width: 300px;
-        z-index: 1000;
-      }
-      
-      .tooltip.visible {
-        opacity: 1;
-      }
-      
-      .tooltip.interactive {
-        pointer-events: auto;
-      }
-      
-      .tooltip-arrow {
-        position: absolute;
-        width: 8px;
-        height: 8px;
-        transform: rotate(45deg);
-      }
-      
-      .tooltip.position-top .tooltip-arrow {
-        bottom: -4px;
-        left: calc(50% - 4px);
-      }
-      
-      .tooltip.position-bottom .tooltip-arrow {
-        top: -4px;
-        left: calc(50% - 4px);
-      }
-      
-      .tooltip.position-left .tooltip-arrow {
-        right: -4px;
-        top: calc(50% - 4px);
-      }
-      
-      .tooltip.position-right .tooltip-arrow {
-        left: -4px;
-        top: calc(50% - 4px);
-      }
-      
-      .tooltip.theme-dark {
-        background-color: rgba(0, 0, 0, 0.8);
-        color: #ffffff;
-        border: 1px solid rgba(80, 120, 240, 0.3);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-      }
-      
-      .tooltip.theme-dark .tooltip-arrow {
-        background-color: rgba(0, 0, 0, 0.8);
-        border: 1px solid rgba(80, 120, 240, 0.3);
-      }
-      
-      .tooltip.theme-light {
-        background-color: rgba(255, 255, 255, 0.95);
-        color: #333333;
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      }
-      
-      .tooltip.theme-light .tooltip-arrow {
-        background-color: rgba(255, 255, 255, 0.95);
-        border: 1px solid rgba(0, 0, 0, 0.1);
-      }
-    `;
+    .tooltip.interactive {
+      pointer-events: auto;
+    }
     
-    document.head.appendChild(style);
-  }
+    .tooltip-arrow {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      transform: rotate(45deg);
+    }
+    
+    .tooltip.position-top .tooltip-arrow {
+      bottom: -4px;
+      left: calc(50% - 4px);
+    }
+    
+    .tooltip.position-bottom .tooltip-arrow {
+      top: -4px;
+      left: calc(50% - 4px);
+    }
+    
+    .tooltip.position-left .tooltip-arrow {
+      right: -4px;
+      top: calc(50% - 4px);
+    }
+    
+    .tooltip.position-right .tooltip-arrow {
+      left: -4px;
+      top: calc(50% - 4px);
+    }
+    
+    .tooltip.theme-dark {
+      background-color: var(--components-tooltip-background, rgba(0, 0, 0, 0.8));
+      color: var(--components-tooltip-textColor, #ffffff);
+      border: var(--borders-width-thin, 1px) solid var(--components-tooltip-border, rgba(80, 120, 240, 0.3));
+      box-shadow: var(--components-tooltip-shadow, 0 2px 10px rgba(0, 0, 0, 0.3));
+    }
+    
+    .tooltip.theme-dark .tooltip-arrow {
+      background-color: var(--components-tooltip-background, rgba(0, 0, 0, 0.8));
+      border: var(--borders-width-thin, 1px) solid var(--components-tooltip-border, rgba(80, 120, 240, 0.3));
+    }
+    
+    .tooltip.theme-light {
+      background-color: var(--components-tooltip-background, rgba(255, 255, 255, 0.95));
+      color: var(--components-tooltip-textColor, #333333);
+      border: var(--borders-width-thin, 1px) solid var(--components-tooltip-border, rgba(0, 0, 0, 0.1));
+      box-shadow: var(--components-tooltip-shadow, 0 2px 10px rgba(0, 0, 0, 0.1));
+    }
+    
+    .tooltip.theme-light .tooltip-arrow {
+      background-color: var(--components-tooltip-background, rgba(255, 255, 255, 0.95));
+      border: var(--borders-width-thin, 1px) solid var(--components-tooltip-border, rgba(0, 0, 0, 0.1));
+    }
+  `;
+  
+  document.head.appendChild(style);
+}
   
   /**
    * Clean up resources

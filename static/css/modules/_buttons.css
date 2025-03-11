@@ -48,7 +48,6 @@ button:active {
 
 button:disabled {
   background-color: rgba(70, 80, 95, 0.3);
-  color: var(--text-muted);
   cursor: not-allowed;
   box-shadow: none;
 }

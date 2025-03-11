@@ -75,24 +75,35 @@ export const BaseTheme = {
   
   // Typography
   typography: {
-    fontFamily: "'Roboto', 'Segoe UI', sans-serif",
+    fontFamily: {
+      primary: "'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
+      mono: "'Roboto Mono', 'Consolas', 'Monaco', 'Courier New', monospace"
+    },
     fontSize: {
-      xs: '0.75rem',
-      sm: '0.875rem',
-      base: '1rem',
-      lg: '1.25rem',
-      xl: '1.5rem',
-      xxl: '2rem'
+      xs: '0.75rem',    // 12px
+      sm: '0.875rem',   // 14px
+      base: '1rem',     // 16px
+      md: '1.125rem',   // 18px
+      lg: '1.25rem',    // 20px
+      xl: '1.5rem',     // 24px
+      '2xl': '1.875rem', // 30px
+      '3xl': '2.25rem'   // 36px
     },
     fontWeight: {
       normal: 400,
       medium: 500,
+      semibold: 600,
       bold: 700
     },
     lineHeight: {
       tight: 1.2,
       normal: 1.5,
       loose: 1.8
+    },
+    letterSpacing: {
+      tight: '-0.025em',
+      normal: '0',
+      wide: '0.025em'
     }
   },
   
@@ -154,55 +165,55 @@ export const BaseTheme = {
     shadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
   },
   
-    // Component-specific styling
-    components: {
-      button: {
-        primary: {
-          background: 'rgba(0, 194, 255, 0.2)',
-          hoverBackground: 'rgba(0, 194, 255, 0.3)',
-          activeBackground: 'rgba(0, 194, 255, 0.4)',
-          textColor: '#ffffff',
-          borderColor: 'rgba(0, 194, 255, 0.5)'
-        },
-        secondary: {
-          background: 'rgba(174, 0, 255, 0.2)',
-          hoverBackground: 'rgba(174, 0, 255, 0.3)',
-          activeBackground: 'rgba(174, 0, 255, 0.4)',
-          textColor: '#ffffff',
-          borderColor: 'rgba(174, 0, 255, 0.5)'
-        },
-        danger: {
-          background: 'rgba(255, 51, 119, 0.2)',
-          hoverBackground: 'rgba(255, 51, 119, 0.3)',
-          activeBackground: 'rgba(255, 51, 119, 0.4)',
-          textColor: '#ffffff',
-          borderColor: 'rgba(255, 51, 119, 0.5)'
-        }
+  // Component-specific styling
+  components: {
+    button: {
+      primary: {
+        background: 'rgba(0, 194, 255, 0.2)',
+        hoverBackground: 'rgba(0, 194, 255, 0.3)',
+        activeBackground: 'rgba(0, 194, 255, 0.4)',
+        textColor: '#ffffff',
+        borderColor: 'rgba(0, 194, 255, 0.5)'
       },
+      secondary: {
+        background: 'rgba(174, 0, 255, 0.2)',
+        hoverBackground: 'rgba(174, 0, 255, 0.3)',
+        activeBackground: 'rgba(174, 0, 255, 0.4)',
+        textColor: '#ffffff',
+        borderColor: 'rgba(174, 0, 255, 0.5)'
+      },
+      danger: {
+        background: 'rgba(255, 51, 119, 0.2)',
+        hoverBackground: 'rgba(255, 51, 119, 0.3)',
+        activeBackground: 'rgba(255, 51, 119, 0.4)',
+        textColor: '#ffffff',
+        borderColor: 'rgba(255, 51, 119, 0.5)'
+      }
+    },
       
-      // Workflow panel specific styling
-      workflow: {
-        executeButton: {
-          background: '#00c2ff',
-          hoverBackground: '#00a8e0',
-          textColor: '#ffffff'
-        },
-        stopButton: {
-          background: '#ff5a65',
-          hoverBackground: '#e74c3c',
-          textColor: '#ffffff'
-        },
-        validateButton: {
-          background: '#ffb545',
-          hoverBackground: '#f39c12',
-          textColor: '#ffffff'
-        },
-        resetButton: {
-          background: '#ff5a65',
-          hoverBackground: '#e74c3c',
-          textColor: '#ffffff'
-        }
+    // Workflow panel specific styling
+    workflow: {
+      executeButton: {
+        background: '#00c2ff',
+        hoverBackground: '#00a8e0',
+        textColor: '#ffffff'
       },
+      stopButton: {
+        background: '#ff5a65',
+        hoverBackground: '#e74c3c',
+        textColor: '#ffffff'
+      },
+      validateButton: {
+        background: '#ffb545',
+        hoverBackground: '#f39c12',
+        textColor: '#ffffff'
+      },
+      resetButton: {
+        background: '#ff5a65',
+        hoverBackground: '#e74c3c',
+        textColor: '#ffffff'
+      }
+    },
     
     panel: {
       background: 'rgba(18, 22, 36, 0.8)',
