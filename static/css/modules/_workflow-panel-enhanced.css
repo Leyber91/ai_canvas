@@ -1,0 +1,840 @@
+/* _workflow-panel-enhanced.css - Premium Space Sci-Fi Theme for Workflow Panel */
+
+/* ========== SHARED VARIABLES ========== */
+:root {
+  /* Animation durations */
+  --panel-transition: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --glow-animation: glow 2s infinite ease-in-out;
+  --pulse-animation: pulse 1.5s infinite ease-in-out;
+  
+  /* Define RGB values for colors to use in rgba() */
+  --status-waiting-rgb: 148, 163, 184;      /* Light mode: Neutral gray */
+  --status-executing-rgb: 59, 130, 246;     /* Light mode: Bright blue */
+  --status-success-rgb: 16, 185, 129;       /* Light mode: Green */
+  --status-error-rgb: 239, 68, 68;          /* Light mode: Red */
+}
+
+.theme-dark {
+  --status-waiting-rgb: 148, 163, 184;      /* Dark mode: Neutral gray */
+  --status-executing-rgb: 0, 194, 255;      /* Dark mode: Neon blue */
+  --status-success-rgb: 46, 204, 113;       /* Dark mode: Green */
+  --status-error-rgb: 255, 90, 101;         /* Dark mode: Red */
+}
+
+/* ========== BASE PANEL STYLES ========== */
+.draggable-panel.workflow-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), 0 0 15px rgba(0, 194, 255, 0.15);
+  backdrop-filter: blur(var(--glass-blur));
+  color: var(--text-primary);
+  transition: all var(--panel-transition);
+  overflow: hidden;
+  border-radius: 10px;
+  transform-origin: center;
+  animation: panelFadeIn 0.4s ease-out forwards;
+}
+
+.draggable-panel.workflow-panel:hover {
+  box-shadow: var(--glass-shadow), 0 0 20px rgba(0, 194, 255, 0.25);
+}
+
+/* Panel header with premium gradient styling */
+.draggable-panel.workflow-panel .draggable-panel-header {
+  background: linear-gradient(90deg, rgba(0, 194, 255, 0.2), rgba(174, 0, 255, 0.2));
+  border-bottom: 1px solid var(--glass-border);
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.draggable-panel.workflow-panel .draggable-panel-title {
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-shadow: 0 0 8px rgba(0, 194, 255, 0.5);
+  letter-spacing: 0.5px;
+  color: var(--text-primary);
+}
+
+/* Control buttons in header */
+.draggable-panel.workflow-panel .panel-control-button {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  box-shadow: none;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  transition: all 0.2s ease;
+}
+
+.draggable-panel.workflow-panel .panel-control-button:hover {
+  color: var(--neon-blue);
+  text-shadow: 0 0 5px var(--neon-blue);
+  background-color: rgba(0, 194, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.draggable-panel.workflow-panel .panel-control-button:active {
+  transform: translateY(1px);
+}
+
+/* Panel content area */
+.draggable-panel.workflow-panel .draggable-panel-content {
+  padding: 0.75rem;
+  background: var(--panel-bg) !important; /* Override inline styles */
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* ========== STATUS INDICATORS ========== */
+.workflow-status-container {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.status-indicator .status-text {
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+/* Status indicator dots */
+.status-indicator .status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 10px;
+  position: relative;
+  box-shadow: 0 0 5px currentColor;
+}
+
+.status-indicator .status-dot::after {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite ease-in-out;
+  opacity: 0.6;
+}
+
+/* Status colors */
+.status-indicator.waiting .status-dot {
+  background-color: var(--status-waiting);
+}
+.status-indicator.executing .status-dot {
+  background-color: var(--status-executing);
+  animation: glow 1.5s infinite ease-in-out;
+}
+.status-indicator.success .status-dot,
+.status-indicator.completed .status-dot {
+  background-color: var(--status-success);
+}
+.status-indicator.error .status-dot {
+  background-color: var(--status-error);
+}
+
+/* Status dot animations */
+.status-indicator.waiting .status-dot::after {
+  border: 1px solid var(--status-waiting);
+}
+.status-indicator.executing .status-dot::after {
+  border: 1px solid var(--status-executing);
+}
+.status-indicator.success .status-dot::after,
+.status-indicator.completed .status-dot::after {
+  border: 1px solid var(--status-success);
+}
+.status-indicator.error .status-dot::after {
+  border: 1px solid var(--status-error);
+}
+
+/* ========== PROGRESS BAR ========== */
+.execution-progress {
+  margin-top: 0.75rem;
+}
+
+.execution-progress .progress-bar {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  height: 8px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.execution-progress .progress-fill {
+  background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.5s ease;
+  box-shadow: 0 0 10px var(--neon-blue);
+  position: relative;
+  overflow: hidden;
+}
+
+.execution-progress .progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: progressShimmer 2s infinite;
+}
+
+/* ========== SECTION STYLING ========== */
+.draggable-panel.workflow-panel h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.75rem;
+  color: var(--neon-blue);
+  text-shadow: 0 0 3px rgba(0, 194, 255, 0.5);
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+}
+
+.draggable-panel.workflow-panel h4::before {
+  content: '';
+  display: inline-block;
+  width: 15px;
+  height: 2px;
+  background: linear-gradient(90deg, var(--neon-blue), transparent);
+  margin-right: 8px;
+}
+
+.draggable-panel.workflow-panel h4::after {
+  content: '';
+  display: inline-block;
+  flex-grow: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--neon-blue), transparent);
+  margin-left: 8px;
+  opacity: 0.5;
+}
+
+/* Container styling for sections */
+.execution-steps-container, 
+.execution-results-container,
+.workflow-errors-container {
+  margin: 0.75rem 0;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.steps-container, 
+.results-container, 
+.errors-container {
+  max-height: 180px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--neon-blue) rgba(0, 0, 0, 0.2);
+  padding-right: 5px;
+}
+
+/* ========== EXECUTION STEPS ========== */
+.execution-step {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+  background-color: rgba(30, 40, 60, 0.4);
+  border-left: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.execution-step:hover {
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.execution-step .step-number {
+  width: 24px;
+  height: 24px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.8rem;
+  margin-right: 12px;
+  color: var(--text-primary);
+}
+
+.execution-step .step-name {
+  flex-grow: 1;
+  font-weight: 500;
+}
+
+.execution-step .step-model {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin: 0 10px;
+  opacity: 0.8;
+}
+
+.execution-step .status-tag {
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Step states */
+.execution-step.pending {
+  border-left-color: var(--status-waiting);
+}
+
+.execution-step.pending .step-number {
+  background-color: rgba(var(--status-waiting-rgb), 0.3);
+}
+
+.execution-step.pending .status-tag {
+  background-color: rgba(var(--status-waiting-rgb), 0.2);
+  color: var(--status-waiting);
+}
+
+.execution-step.executing {
+  border-left-color: var(--status-executing);
+  animation: stepExecuting 2s infinite ease-in-out;
+}
+
+.execution-step.executing .step-number {
+  background-color: rgba(var(--status-executing-rgb), 0.3);
+}
+
+.execution-step.executing .status-tag {
+  background-color: rgba(var(--status-executing-rgb), 0.2);
+  color: var(--status-executing);
+}
+
+.execution-step.completed,
+.execution-step.success {
+  border-left-color: var(--status-success);
+}
+
+.execution-step.completed .step-number,
+.execution-step.success .step-number {
+  background-color: rgba(var(--status-success-rgb), 0.3);
+}
+
+.execution-step.completed .status-tag,
+.execution-step.success .status-tag {
+  background-color: rgba(var(--status-success-rgb), 0.2);
+  color: var(--status-success);
+}
+
+.execution-step.error {
+  border-left-color: var(--status-error);
+}
+
+.execution-step.error .step-number {
+  background-color: rgba(var(--status-error-rgb), 0.3);
+}
+
+.execution-step.error .status-tag {
+  background-color: rgba(var(--status-error-rgb), 0.2);
+  color: var(--status-error);
+}
+
+/* ========== RESULTS CONTAINER ========== */
+.results-container {
+  font-family: 'Roboto Mono', 'Consolas', monospace;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 0.5rem;
+}
+
+/* ========== SCROLLBAR STYLING ========== */
+.steps-container::-webkit-scrollbar,
+.results-container::-webkit-scrollbar,
+.errors-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.steps-container::-webkit-scrollbar-thumb,
+.results-container::-webkit-scrollbar-thumb,
+.errors-container::-webkit-scrollbar-thumb {
+  background: var(--neon-blue);
+  border-radius: 3px;
+}
+
+.steps-container::-webkit-scrollbar-track,
+.results-container::-webkit-scrollbar-track,
+.errors-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+/* ========== EMPTY STATES ========== */
+.empty-plan, 
+.empty-results {
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 1rem;
+  text-align: center;
+  border-radius: 6px;
+  background-color: rgba(30, 40, 60, 0.3);
+}
+
+/* ========== WORKFLOW CONTROLS ========== */
+.workflow-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+/* Execute button - primary action */
+.workflow-controls .execute-btn {
+  background: linear-gradient(45deg, rgba(0, 194, 255, 0.2), rgba(174, 0, 255, 0.2));
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-weight: 600;
+  padding: 0.75rem 1.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workflow-controls .execute-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: 0.5s;
+}
+
+.workflow-controls .execute-btn:hover {
+  background: linear-gradient(45deg, rgba(0, 194, 255, 0.4), rgba(174, 0, 255, 0.4));
+  box-shadow: 0 4px 12px rgba(0, 194, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.workflow-controls .execute-btn:hover::before {
+  left: 100%;
+}
+
+.workflow-controls .execute-btn:active {
+  transform: translateY(1px);
+}
+
+/* Stop button - danger action */
+.workflow-controls .stop-btn {
+  background: linear-gradient(45deg, rgba(255, 51, 119, 0.2), rgba(255, 102, 0, 0.2));
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-weight: 600;
+  padding: 0.75rem 1.25rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.workflow-controls .stop-btn:hover:not(:disabled) {
+  background: linear-gradient(45deg, rgba(255, 51, 119, 0.4), rgba(255, 102, 0, 0.4));
+  box-shadow: 0 4px 12px rgba(255, 51, 119, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.workflow-controls .stop-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* Validate button - secondary action */
+.workflow-controls .validate-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-weight: 500;
+  padding: 0.75rem 1.25rem;
+}
+
+.workflow-controls .validate-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--neon-blue);
+  box-shadow: 0 2px 8px rgba(0, 194, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.workflow-controls .validate-btn:active {
+  transform: translateY(1px);
+}
+
+/* Force Reset button */
+.workflow-controls .reset-btn {
+  background: linear-gradient(45deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.2));
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-weight: 600;
+  padding: 0.75rem 1.25rem;
+  margin-left: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.workflow-controls .reset-btn:hover {
+  background: linear-gradient(45deg, rgba(255, 193, 7, 0.4), rgba(255, 152, 0, 0.4));
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.workflow-controls .reset-btn:active {
+  transform: translateY(1px);
+}
+
+/* ========== LIGHT MODE STYLES ========== */
+.theme-light .draggable-panel.workflow-panel {
+  --panel-bg: rgba(255, 255, 255, 0.97);
+  --glass-border: rgba(0, 120, 212, 0.15);
+  --glass-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  backdrop-filter: blur(5px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 120, 212, 0.12);
+}
+
+/* Panel header styling for light mode */
+.theme-light .draggable-panel.workflow-panel .draggable-panel-header {
+  background: linear-gradient(90deg, #4a89dc, #5d9cec);
+  border-bottom: 1px solid rgba(0, 120, 212, 0.2);
+}
+
+.theme-light .draggable-panel.workflow-panel .draggable-panel-title {
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+}
+
+.theme-light .draggable-panel.workflow-panel .panel-control-button {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.theme-light .draggable-panel.workflow-panel .panel-control-button:hover {
+  color: white;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Status indicators for light mode */
+.theme-light .workflow-status-container {
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.theme-light .status-indicator .status-text,
+.theme-light .progress-text {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.theme-light .status-indicator.waiting .status-dot {
+  background-color: #94a3b8;
+  box-shadow: 0 0 3px rgba(148, 163, 184, 0.5);
+}
+
+.theme-light .status-indicator.executing .status-dot {
+  background-color: #3b82f6;
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+}
+
+.theme-light .status-indicator.success .status-dot,
+.theme-light .status-indicator.completed .status-dot {
+  background-color: #10b981;
+  box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+}
+
+.theme-light .status-indicator.error .status-dot {
+  background-color: #ef4444;
+  box-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
+}
+
+/* Section headers for light mode */
+.theme-light .draggable-panel.workflow-panel h4 {
+  color: #3b82f6;
+  text-shadow: none;
+  font-weight: 600;
+}
+
+.theme-light .draggable-panel.workflow-panel h4::before,
+.theme-light .draggable-panel.workflow-panel h4::after {
+  background: linear-gradient(90deg, #3b82f6, transparent);
+}
+
+/* Container backgrounds for light mode */
+.theme-light .execution-steps-container, 
+.theme-light .execution-results-container,
+.theme-light .workflow-errors-container {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Steps styling for light mode */
+.theme-light .execution-step {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.theme-light .execution-step .step-number {
+  color: #ffffff;
+}
+
+.theme-light .execution-step .step-name {
+  color: #1e293b;
+}
+
+.theme-light .execution-step .step-model {
+  color: #64748b;
+}
+
+/* Step states for light mode */
+.theme-light .execution-step.pending {
+  border-left-color: #94a3b8;
+}
+
+.theme-light .execution-step.pending .step-number {
+  background-color: #94a3b8;
+}
+
+.theme-light .execution-step.pending .status-tag {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.theme-light .execution-step.executing {
+  border-left-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.theme-light .execution-step.executing .step-number {
+  background-color: #3b82f6;
+}
+
+.theme-light .execution-step.executing .status-tag {
+  background-color: #dbeafe;
+  color: #2563eb;
+}
+
+.theme-light .execution-step.completed,
+.theme-light .execution-step.success {
+  border-left-color: #10b981;
+  background-color: #f0fdf4;
+}
+
+.theme-light .execution-step.completed .step-number,
+.theme-light .execution-step.success .step-number {
+  background-color: #10b981;
+}
+
+.theme-light .execution-step.completed .status-tag,
+.theme-light .execution-step.success .status-tag {
+  background-color: #dcfce7;
+  color: #059669;
+}
+
+.theme-light .execution-step.error {
+  border-left-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.theme-light .execution-step.error .step-number {
+  background-color: #ef4444;
+}
+
+.theme-light .execution-step.error .status-tag {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+/* Progress bar for light mode */
+.theme-light .execution-progress .progress-bar {
+  background: #e2e8f0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.theme-light .execution-progress .progress-fill {
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+}
+
+/* Results container for light mode */
+.theme-light .results-container {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+  padding: 0.75rem;
+}
+
+/* Empty states for light mode */
+.theme-light .empty-plan, 
+.theme-light .empty-results {
+  color: #64748b;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+/* Workflow controls for light mode */
+.theme-light .workflow-controls {
+  border-top: 1px solid #e2e8f0;
+}
+
+.theme-light .workflow-controls .execute-btn {
+  background: #3b82f6;
+  color: white;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.theme-light .workflow-controls .execute-btn:hover {
+  background: #2563eb;
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+.theme-light .workflow-controls .stop-btn {
+  background: #ef4444;
+  color: white;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+.theme-light .workflow-controls .stop-btn:hover:not(:disabled) {
+  background: #dc2626;
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
+}
+
+.theme-light .workflow-controls .validate-btn {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.theme-light .workflow-controls .validate-btn:hover {
+  background: #d97706;
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
+}
+
+.theme-light .workflow-controls .reset-btn {
+  background: #f59e0b;
+  color: white;
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.theme-light .workflow-controls .reset-btn:hover {
+  background: #d97706;
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
+}
+
+/* Scrollbar styling for light mode */
+.theme-light .steps-container::-webkit-scrollbar-thumb,
+.theme-light .results-container::-webkit-scrollbar-thumb,
+.theme-light .errors-container::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+}
+
+.theme-light .steps-container::-webkit-scrollbar-track,
+.theme-light .results-container::-webkit-scrollbar-track,
+.theme-light .errors-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+/* ========== DARK MODE SPECIFIC ENHANCEMENTS ========== */
+.theme-dark .draggable-panel.workflow-panel {
+  --panel-bg: rgba(15, 23, 42, 0.85);
+  --glass-border: rgba(0, 194, 255, 0.2);
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 194, 255, 0.15);
+  border: 1px solid rgba(0, 194, 255, 0.15);
+}
+
+.theme-dark .execution-step {
+  background-color: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(30, 41, 59, 0.8);
+}
+
+.theme-dark .empty-plan, 
+.theme-dark .empty-results {
+  background-color: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(30, 41, 59, 0.6);
+}
+
+.theme-dark .results-container {
+  background-color: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(30, 41, 59, 0.6);
+  color: #cbd5e1;
+}
+
+/* ========== ANIMATIONS ========== */
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.4); opacity: 0.3; }
+  100% { transform: scale(1); opacity: 0.6; }
+}
+
+@keyframes glow {
+  0% { box-shadow: 0 0 5px currentColor; }
+  50% { box-shadow: 0 0 15px currentColor; }
+  100% { box-shadow: 0 0 5px currentColor; }
+}
+
+@keyframes progressShimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+@keyframes stepExecuting {
+  0% { background-color: rgba(30, 41, 59, 0.6); }
+  50% { background-color: rgba(var(--status-executing-rgb), 0.1); }
+  100% { background-color: rgba(30, 41, 59, 0.6); }
+}
+
+@keyframes panelFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========== UTILITY HELPERS ========== */
+.hidden {
+  display: none !important;
+}

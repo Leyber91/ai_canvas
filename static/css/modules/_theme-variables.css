@@ -3,7 +3,7 @@
  * Theme variables for AI Canvas - supports both light and dark themes
  */
 
-:root {
+ :root {
   /* Base Theme Colors - Dark Theme by Default */
   --theme-bg-primary: var(--space-black);
   --theme-bg-secondary: var(--space-dark);
@@ -95,6 +95,13 @@
   --theme-scrollbar-track: rgba(0, 0, 0, 0.2);
   --theme-scrollbar-thumb: rgba(0, 194, 255, 0.3);
   --theme-scrollbar-thumb-hover: rgba(0, 194, 255, 0.5);
+  
+  /* Animation speeds */
+  --transition-speed: 0.3s ease;
+  --transition-fast: 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --transition-medium: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --transition-slow: 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --transition-bounce: 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
 }
 
 /* Light Theme Overrides */
@@ -224,6 +231,17 @@
   font-size: 18px;
   position: relative;
   z-index: 1;
+}
+
+/* Light theme specific adjustments */
+.theme-light .theme-toggle {
+  background: linear-gradient(45deg, rgba(255, 225, 125, 0.2), rgba(255, 160, 0, 0.2));
+  border: 1px solid rgba(255, 160, 0, 0.2);
+}
+
+.theme-light .theme-toggle:hover {
+  background: linear-gradient(45deg, rgba(255, 225, 125, 0.3), rgba(255, 160, 0, 0.3));
+  box-shadow: 0 5px 15px rgba(255, 160, 0, 0.3);
 }
 
 /* Workflow Panel Draggable Styles */

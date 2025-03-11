@@ -14,7 +14,7 @@
 @import url('modules/_layout.css');
 @import url('modules/_header.css');
 @import url('modules/_buttons.css');
-@import url('./modules/_typography.css');
+@import url('modules/_typography.css');
 
 /* Panel and component styles */
 @import url('modules/_conversation-panel.css');
@@ -31,9 +31,13 @@
 @import url('modules/_typing-indicator.css');
 @import url('modules/_workflow-controls.css');
 @import url('modules/_workflow-panel.css');
+@import url('modules/_workflow-panel-enhanced.css');
 @import url('modules/_workflow-panel-fix.css');
 @import url('modules/_result-modal.css');
 @import url('modules/_validation.css');
+
+/* Import animations */
+@import url('./animations.css');
 
 /* Global styles and overrides */
 body {

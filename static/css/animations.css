@@ -1,0 +1,322 @@
+/* animations.css - Enhanced Animation System */
+
+/* Global animation variables */
+:root {
+    --transition-fast: 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    --transition-medium: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    --transition-slow: 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+    --transition-bounce: 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+  }
+  
+  /* Smooth transitions for all elements */
+  *, *::before, *::after {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+    transition-duration: 0.3s;
+    transition-timing-function: cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  
+  /* Enhanced node animations */
+  .node {
+    transition: all var(--transition-medium);
+  }
+  
+  .node.executing {
+    animation: nodeExecuting 2s infinite ease-in-out;
+  }
+  
+  @keyframes nodeExecuting {
+    0% { box-shadow: 0 0 0 2px rgba(0, 194, 255, 0.5), 0 0 15px rgba(0, 194, 255, 0.3); }
+    50% { box-shadow: 0 0 0 3px rgba(0, 194, 255, 0.8), 0 0 20px rgba(0, 194, 255, 0.5); }
+    100% { box-shadow: 0 0 0 2px rgba(0, 194, 255, 0.5), 0 0 15px rgba(0, 194, 255, 0.3); }
+  }
+  
+  .node.completed {
+    animation: nodeCompleted 0.5s forwards;
+  }
+  
+  @keyframes nodeCompleted {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  
+  .node.error {
+    animation: nodeError 0.5s forwards;
+  }
+  
+  @keyframes nodeError {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+  }
+  
+  /* Enhanced edge animations */
+  .edge.executing {
+    animation: edgeFlow 2s infinite linear;
+    stroke-dasharray: 10;
+    stroke-dashoffset: 20;
+  }
+  
+  @keyframes edgeFlow {
+    to { stroke-dashoffset: 0; }
+  }
+  
+  /* Panel animations */
+  .draggable-panel {
+    transition: all var(--transition-medium);
+    animation: panelFadeIn 0.4s ease-out forwards;
+  }
+  
+  @keyframes panelFadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .draggable-panel.minimized {
+    animation: panelMinimize 0.3s ease-out forwards;
+  }
+  
+  @keyframes panelMinimize {
+    to { transform: translateX(calc(100% - 40px)); }
+  }
+  
+  /* Button animations */
+  button:not(:disabled) {
+    transition: all var(--transition-medium);
+  }
+  
+  button:active:not(:disabled) {
+    animation: buttonPress 0.2s forwards;
+  }
+  
+  @keyframes buttonPress {
+    0% { transform: scale(1); }
+    100% { transform: scale(0.98); }
+  }
+  
+  .execute-btn:not(:disabled):active {
+    animation: executePress 0.3s forwards;
+  }
+  
+  @keyframes executePress {
+    0% { transform: scale(1); }
+    30% { transform: scale(0.95); }
+    100% { transform: scale(1); }
+  }
+  
+  /* Notification animations */
+  .notification {
+    animation: notificationSlideIn 0.5s var(--transition-bounce) forwards;
+  }
+  
+  .notification.exit {
+    animation: notificationSlideOut 0.4s ease-in forwards;
+  }
+  
+  @keyframes notificationSlideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  
+  @keyframes notificationSlideOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+  }
+  
+  /* Loading indicator improvements */
+  .loading {
+    position: relative;
+    width: 30px;
+    height: 30px;
+  }
+  
+  .loading::before, .loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 3px solid transparent;
+  }
+  
+  .loading::before {
+    border-top-color: var(--neon-blue);
+    animation: spin 1s linear infinite;
+  }
+  
+  .loading::after {
+    border-left-color: var(--neon-purple);
+    animation: spin 1.5s linear infinite;
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  /* Modal animations */
+  .modal {
+    animation: modalFadeIn 0.3s ease-out forwards;
+  }
+  
+  .modal-content {
+    animation: modalContentSlideUp 0.4s var(--transition-bounce) forwards;
+  }
+  
+  .modal.exit {
+    animation: modalFadeOut 0.3s ease-in forwards;
+  }
+  
+  .modal.exit .modal-content {
+    animation: modalContentSlideDown 0.3s ease-in forwards;
+  }
+  
+  @keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes modalContentSlideUp {
+    from { transform: translateY(50px) scale(0.95); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  
+  @keyframes modalFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  
+  @keyframes modalContentSlideDown {
+    from { transform: translateY(0) scale(1); opacity: 1; }
+    to { transform: translateY(50px) scale(0.95); opacity: 0; }
+  }
+  
+  /* Tooltip animations */
+  .tooltip {
+    animation: tooltipFadeIn 0.2s ease-out forwards;
+  }
+  
+  .tooltip.exit {
+    animation: tooltipFadeOut 0.1s ease-in forwards;
+  }
+  
+  @keyframes tooltipFadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes tooltipFadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(5px); }
+  }
+  
+  /* Card hover animations */
+  .card {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+  
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  }
+  
+  .card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple));
+    transform: scaleX(0);
+    transform-origin: 0 0;
+    transition: transform 0.3s ease;
+  }
+  
+  .card:hover::after {
+    transform: scaleX(1);
+  }
+  
+  /* Status indicator animations */
+  .status-indicator .status-dot {
+    position: relative;
+  }
+  
+  .status-indicator .status-dot::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 50%;
+    z-index: -1;
+    opacity: 0;
+    animation: statusPulse 2s infinite;
+  }
+  
+  .status-indicator.success .status-dot::after {
+    border: 1px solid var(--success-color);
+  }
+  
+  .status-indicator.error .status-dot::after {
+    border: 1px solid var(--error-color);
+  }
+  
+  .status-indicator.executing .status-dot::after {
+    border: 1px solid var(--neon-blue);
+  }
+  
+  @keyframes statusPulse {
+    0% { transform: scale(0.8); opacity: 0.3; }
+    50% { transform: scale(1.5); opacity: 0.1; }
+    100% { transform: scale(0.8); opacity: 0.3; }
+  }
+  
+  /* Form feedback animations */
+  .form-group.has-error input,
+  .form-group.has-error select,
+  .form-group.has-error textarea {
+    animation: formErrorShake 0.4s ease-in-out;
+  }
+  
+  @keyframes formErrorShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+  }
+  
+  .form-group.has-success input,
+  .form-group.has-success select,
+  .form-group.has-success textarea {
+    animation: formSuccessPulse 0.4s ease-in-out;
+  }
+  
+  @keyframes formSuccessPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+  }
+  
+  /* Light theme specific animations */
+  .theme-light .node.executing {
+    animation: nodeExecutingLight 2s infinite ease-in-out;
+  }
+  
+  @keyframes nodeExecutingLight {
+    0% { box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.5), 0 0 15px rgba(0, 120, 212, 0.3); }
+    50% { box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.8), 0 0 20px rgba(0, 120, 212, 0.5); }
+    100% { box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.5), 0 0 15px rgba(0, 120, 212, 0.3); }
+  }
+  
+  /* Theme transition animations */
+  .theme-transition {
+    animation: themeTransition 0.5s ease-in-out;
+  }
+  
+  @keyframes themeTransition {
+    0% { opacity: 0.8; }
+    50% { opacity: 0.9; }
+    100% { opacity: 1; }
+  }

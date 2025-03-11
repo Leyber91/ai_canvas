@@ -1,64 +1,76 @@
-/* _node-operations.css - Enhanced with Space Sci-Fi Theme */
+/* Node operations light mode fixes */
+.theme-light .node-operations {
+  background-color: #f0f4f8;
+  border: 1px solid rgba(0, 120, 212, 0.15);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 1rem;
+}
 
-.node-operations {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 1rem;
-    padding: 1.2rem;
-    border-top: 1px solid var(--glass-border);
-    background-color: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    border-radius: var(--border-radius-md);
-    box-shadow: var(--glass-shadow);
-  }
-  
-  .node-op-btn {
-    padding: 0.5rem 1rem;
-    font-size: 0.85rem;
-    background: rgba(0, 194, 255, 0.2);
-    color: var(--text-primary);
-    border: 1px solid var(--neon-blue);
-    border-radius: var(--border-radius-sm);
-    cursor: pointer;
-    transition: all var(--transition-speed);
-    position: relative;
-    overflow: hidden;
-    text-shadow: 0 0 5px var(--neon-blue);
-  }
-  
-  .node-op-btn:hover {
-    background: rgba(0, 194, 255, 0.3);
-    box-shadow: 0 0 10px rgba(0, 194, 255, 0.5);
-    transform: translateY(-2px);
-  }
-  
-  .node-op-btn:active {
-    transform: translateY(1px);
-  }
-  
-  .node-op-btn.active-operation {
-    background: rgba(255, 51, 119, 0.3);
-    border-color: var(--error-color);
-    animation: var(--pulse-animation);
-    text-shadow: 0 0 5px var(--error-color);
-  }
-  
-  .floating-edge-btn {
-    padding: 0.5rem 1rem;
-    font-size: 0.85rem;
-    background: rgba(255, 51, 119, 0.3);
-    color: var(--text-primary);
-    border: 1px solid var(--error-color);
-    border-radius: var(--border-radius-sm);
-    cursor: pointer;
-    box-shadow: 0 0 15px rgba(255, 51, 119, 0.5);
-    transition: all var(--transition-speed);
-    animation: float 3s ease-in-out infinite;
-    backdrop-filter: blur(var(--glass-blur));
-  }
-  
-  .floating-edge-btn:hover {
-    background: rgba(255, 51, 119, 0.5);
-    box-shadow: 0 0 20px rgba(255, 51, 119, 0.7);
-  }
+.theme-light .node-op-btn {
+  background-color: #e7edf5;
+  color: #2c5282;
+  border: 1px solid rgba(44, 82, 130, 0.2);
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-radius: 6px;
+  padding: 8px 16px;
+}
+
+.theme-light .node-op-btn:hover {
+  background-color: #d9e6f7;
+  color: #1e4e8c;
+  border-color: rgba(30, 78, 140, 0.3);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.theme-light .model-limits-info {
+  background-color: #e6f0ff;
+  border: 1px solid rgba(0, 120, 212, 0.2);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  color: #2c5282;
+  margin-top: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.theme-light .model-limits-info h4 {
+  color: #1e4e8c;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Fix for the light mode buttons */
+.theme-light .workflow-panel .execute-btn {
+  background-color: #3182ce;
+  color: white;
+  border-color: #2b6cb0;
+}
+
+.theme-light .workflow-panel .execute-btn:hover {
+  background-color: #2b6cb0;
+  box-shadow: 0 2px 6px rgba(49, 130, 206, 0.3);
+}
+
+.theme-light .workflow-panel .stop-execution {
+  background-color: #f56565;
+  color: white;
+  border-color: #e53e3e;
+}
+
+.theme-light .workflow-panel .stop-execution:hover {
+  background-color: #e53e3e;
+  box-shadow: 0 2px 6px rgba(245, 101, 101, 0.3);
+}
+
+.theme-light .workflow-panel .validate-btn {
+  background-color: #ed8936;
+  color: white;
+  border-color: #dd6b20;
+}
+
+.theme-light .workflow-panel .validate-btn:hover {
+  background-color: #dd6b20;
+  box-shadow: 0 2px 6px rgba(237, 137, 54, 0.3);
+}
