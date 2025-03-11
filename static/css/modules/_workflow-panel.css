@@ -1,21 +1,845 @@
-/* Enhanced workflow panel styling with better error handling */
+/* 
+ * unified-workflow-panel.css
+ * Complete and optimized styling for all workflow panel components
+ * Combines and resolves conflicts from multiple workflow panel CSS files
+ */
 
-/* Error display enhancement */
-.workflow-errors {
-    margin-top: 15px;
-    padding: 10px;
-    background-color: rgba(255, 51, 119, 0.1);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 51, 119, 0.3);
-    color: var(--text-primary, #ffffff);
-    max-height: 300px;
-    overflow-y: auto;
+/* ========== Z-INDEX MANAGEMENT ========== */
+:root {
+    --workflow-panel-base-z: 5000;        /* Base z-index for workflow components */
+    --workflow-panel-z: 5100;             /* Panel itself */
+    --workflow-modal-z: 5200;             /* Modal dialog */
+    --workflow-dropover-z: 5050;          /* Drag overlay */
   }
   
-  .workflow-errors.hidden {
+  /* ========== DRAGGABLE PANEL BASE STYLES ========== */
+  .draggable-panel {
+    position: fixed;
+    z-index: var(--workflow-panel-z);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    resize: both;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    min-width: 320px;
+    min-height: 200px;
+    animation: panelFadeIn 0.4s ease-out forwards;
+  }
+  
+  /* Default theme styling (dark mode) */
+  .draggable-panel {
+    background-color: rgba(18, 22, 36, 0.85);
+    border: 1px solid rgba(52, 152, 219, 0.25);
+    color: rgba(255, 255, 255, 0.95);
+  }
+  
+  /* Light theme override */
+  .theme-light .draggable-panel {
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(80, 120, 240, 0.2);
+    color: #1a1f36;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Hover effect for panels */
+  .draggable-panel:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  }
+  
+  .theme-light .draggable-panel:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Ensure panel stays on top during drag */
+  .draggable-panel.dragging {
+    z-index: calc(var(--workflow-panel-z) + 10);
+  }
+  
+  /* ========== PANEL HEADER ========== */
+  .draggable-panel-header {
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: grab;
+    user-select: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  /* Dark theme header styling */
+  .draggable-panel-header {
+    background: linear-gradient(90deg, rgba(0, 194, 255, 0.25), rgba(0, 145, 255, 0.35));
+  }
+  
+  /* Light theme header styling */
+  .theme-light .draggable-panel-header {
+    background: linear-gradient(90deg, #4a89dc, #5d9cec);
+    border-bottom: 1px solid rgba(0, 120, 212, 0.2);
+  }
+  
+  .draggable-panel-title {
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    letter-spacing: 0.5px;
+  }
+  
+  .theme-light .draggable-panel-title {
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Cursor changes when actively dragging */
+  .draggable-panel-header.dragging {
+    cursor: grabbing;
+  }
+  
+  /* ========== HEADER CONTROLS ========== */
+  .draggable-panel-controls {
+    display: flex;
+    gap: 8px;
+  }
+  
+  .panel-control-button {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.9);
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 16px;
+    padding: 0;
+  }
+  
+  .panel-control-button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white;
+    transform: translateY(-1px);
+  }
+  
+  .panel-control-button:active {
+    transform: translateY(1px);
+  }
+  
+  .theme-light .panel-control-button {
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .theme-light .panel-control-button:hover {
+    color: white;
+    background-color: rgba(255, 255, 255, 0.25);
+  }
+  
+  /* ========== PANEL CONTENT ========== */
+  .draggable-panel-content {
+    padding: 16px;
+    overflow-y: auto;
+    max-height: calc(100% - 48px); /* Panel height minus header */
+    background-color: transparent;
+  }
+  
+  .draggable-panel-content.expanded {
+    display: block;
+  }
+  
+  .draggable-panel-content h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 1rem 0 0.75rem;
+    color: var(--neon-blue, #00c2ff);
+    text-shadow: 0 0 3px rgba(0, 194, 255, 0.3);
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .theme-light .draggable-panel-content h4 {
+    color: #3b82f6;
+    text-shadow: none;
+  }
+  
+  .draggable-panel-content h4::before {
+    content: '';
+    display: inline-block;
+    width: 15px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--neon-blue, #00c2ff), transparent);
+    margin-right: 8px;
+  }
+  
+  .theme-light .draggable-panel-content h4::before {
+    background: linear-gradient(90deg, #3b82f6, transparent);
+  }
+  
+  .draggable-panel-content h4::after {
+    content: '';
+    display: inline-block;
+    flex-grow: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--neon-blue, #00c2ff), transparent);
+    margin-left: 8px;
+    opacity: 0.5;
+  }
+  
+  .theme-light .draggable-panel-content h4::after {
+    background: linear-gradient(90deg, #3b82f6, transparent);
+  }
+  
+  /* ========== WORKFLOW STATUS CONTAINER ========== */
+  .workflow-status-container {
+    margin-bottom: 1.25rem;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+  }
+  
+  /* Dark theme status container */
+  .workflow-status-container {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  /* Light theme status container */
+  .theme-light .workflow-status-container {
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  
+  .workflow-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  
+  /* ========== STATUS INDICATORS ========== */
+  .status-indicator {
+    display: flex;
+    align-items: center;
+  }
+  
+  .status-indicator .status-text {
+    font-weight: 500;
+    letter-spacing: 0.3px;
+  }
+  
+  .theme-light .status-indicator .status-text {
+    color: #1e293b;
+    font-weight: 600;
+  }
+  
+  /* Status indicator dots */
+  .status-indicator .status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 10px;
+    position: relative;
+  }
+  
+  /* Dark theme status colors */
+  .status-indicator.waiting .status-dot {
+    background-color: rgba(148, 163, 184, 0.7);
+    box-shadow: 0 0 5px rgba(148, 163, 184, 0.3);
+  }
+  
+  .status-indicator.executing .status-dot {
+    background-color: rgba(0, 194, 255, 1);
+    box-shadow: 0 0 8px rgba(0, 194, 255, 0.5);
+    animation: pulse 1.5s infinite;
+  }
+  
+  .status-indicator.success .status-dot,
+  .status-indicator.completed .status-dot {
+    background-color: rgba(46, 204, 113, 1);
+    box-shadow: 0 0 5px rgba(46, 204, 113, 0.5);
+  }
+  
+  .status-indicator.error .status-dot {
+    background-color: rgba(255, 90, 101, 1);
+    box-shadow: 0 0 5px rgba(255, 90, 101, 0.5);
+  }
+  
+  /* Light theme status colors */
+  .theme-light .status-indicator.waiting .status-dot {
+    background-color: #94a3b8;
+    box-shadow: 0 0 3px rgba(148, 163, 184, 0.5);
+  }
+  
+  .theme-light .status-indicator.executing .status-dot {
+    background-color: #3b82f6;
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+  }
+  
+  .theme-light .status-indicator.success .status-dot,
+  .theme-light .status-indicator.completed .status-dot {
+    background-color: #10b981;
+    box-shadow: 0 0 5px rgba(16, 185, 129, 0.5);
+  }
+  
+  .theme-light .status-indicator.error .status-dot {
+    background-color: #ef4444;
+    box-shadow: 0 0 5px rgba(239, 68, 68, 0.5);
+  }
+  
+  /* Pulsing animation for status dots */
+  .status-indicator .status-dot::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 50%;
+    z-index: -1;
+    opacity: 0;
+    animation: statusPulse 2s infinite;
+  }
+  
+  .status-indicator.success .status-dot::after,
+  .status-indicator.completed .status-dot::after {
+    border: 1px solid rgba(46, 204, 113, 0.5);
+  }
+  
+  .status-indicator.error .status-dot::after {
+    border: 1px solid rgba(255, 90, 101, 0.5);
+  }
+  
+  .status-indicator.executing .status-dot::after {
+    border: 1px solid rgba(0, 194, 255, 0.5);
+  }
+  
+  .theme-light .status-indicator.success .status-dot::after,
+  .theme-light .status-indicator.completed .status-dot::after {
+    border: 1px solid rgba(16, 185, 129, 0.5);
+  }
+  
+  .theme-light .status-indicator.error .status-dot::after {
+    border: 1px solid rgba(239, 68, 68, 0.5);
+  }
+  
+  .theme-light .status-indicator.executing .status-dot::after {
+    border: 1px solid rgba(59, 130, 246, 0.5);
+  }
+  
+  /* ========== PROGRESS BAR ========== */
+  .execution-progress {
+    width: 100%;
+  }
+  
+  .progress-bar {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    height: 8px;
+    overflow: hidden;
+    margin: 0.5rem 0;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+  
+  .theme-light .progress-bar {
+    background: #e2e8f0;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .progress-fill {
+    background: linear-gradient(90deg, var(--neon-blue, #00c2ff), var(--neon-purple, #ae00ff));
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.5s ease;
+    box-shadow: 0 0 10px rgba(0, 194, 255, 0.4);
+    position: relative;
+  }
+  
+  .theme-light .progress-fill {
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+  }
+  
+  .progress-text {
+    text-align: right;
+    font-size: 0.85rem;
+    margin-top: 5px;
+  }
+  
+  .theme-light .progress-text {
+    color: #1e293b;
+    font-weight: 600;
+  }
+  
+  /* Progress fill animation */
+  .progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    animation: progressShimmer 2s infinite;
+  }
+  
+  /* ========== EXECUTION STEPS ========== */
+  .execution-steps-container, 
+  .execution-results-container {
+    margin: 1.25rem 0;
+    padding: 0.5rem;
+    border-radius: 8px;
+  }
+  
+  .steps-container, 
+  .results-container {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 5px;
+  }
+  
+  .step-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+  }
+  
+  /* Dark theme step items */
+  .step-item {
+    background-color: rgba(30, 40, 60, 0.4);
+    border: 1px solid rgba(30, 41, 59, 0.8);
+  }
+  
+  /* Light theme step items */
+  .theme-light .step-item {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  
+  .step-item:hover {
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  .step-number {
+    width: 24px;
+    height: 24px;
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-right: 12px;
+    color: white;
+  }
+  
+  .theme-light .step-number {
+    color: #ffffff;
+  }
+  
+  .step-name {
+    flex-grow: 1;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .theme-light .step-name {
+    color: #1e293b;
+  }
+  
+  .step-model {
+    font-size: 0.8rem;
+    color: rgba(170, 200, 255, 0.85);
+    margin: 0 10px;
+    opacity: 0.9;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .theme-light .step-model {
+    color: #64748b;
+  }
+  
+  .step-status {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 80px;
+    text-align: center;
+  }
+  
+  /* Step states - Dark Theme */
+  .step-item.pending,
+  .step-item .step-status.pending {
+    border-left-color: rgba(148, 163, 184, 0.7);
+  }
+  
+  .step-item.executing {
+    border-left-color: rgba(0, 194, 255, 1);
+    animation: stepExecuting 2s infinite ease-in-out;
+  }
+  
+  .step-item.completed,
+  .step-item.success {
+    border-left-color: rgba(46, 204, 113, 1);
+  }
+  
+  .step-item.error {
+    border-left-color: rgba(255, 90, 101, 1);
+  }
+  
+  .step-item.executing .step-number {
+    background-color: rgba(0, 194, 255, 0.3);
+  }
+  
+  .step-item.executing .step-status {
+    background-color: rgba(0, 194, 255, 0.2);
+    color: rgba(0, 194, 255, 1);
+  }
+  
+  .step-item.completed .step-number,
+  .step-item.success .step-number {
+    background-color: rgba(46, 204, 113, 0.3);
+  }
+  
+  .step-item.completed .step-status,
+  .step-item.success .step-status {
+    background-color: rgba(46, 204, 113, 0.2);
+    color: rgba(46, 204, 113, 1);
+  }
+  
+  .step-item.error .step-number {
+    background-color: rgba(255, 90, 101, 0.3);
+  }
+  
+  .step-item.error .step-status {
+    background-color: rgba(255, 90, 101, 0.2);
+    color: rgba(255, 90, 101, 1);
+  }
+  
+  /* Step states - Light Theme */
+  .theme-light .step-item.pending {
+    border-left-color: #94a3b8;
+  }
+  
+  .theme-light .step-item.executing {
+    border-left-color: #3b82f6;
+    background-color: #eff6ff;
+  }
+  
+  .theme-light .step-item.completed,
+  .theme-light .step-item.success {
+    border-left-color: #10b981;
+    background-color: #f0fdf4;
+  }
+  
+  .theme-light .step-item.error {
+    border-left-color: #ef4444;
+    background-color: #fef2f2;
+  }
+  
+  .theme-light .step-item.pending .step-number {
+    background-color: #94a3b8;
+  }
+  
+  .theme-light .step-item.executing .step-number {
+    background-color: #3b82f6;
+  }
+  
+  .theme-light .step-item.completed .step-number,
+  .theme-light .step-item.success .step-number {
+    background-color: #10b981;
+  }
+  
+  .theme-light .step-item.error .step-number {
+    background-color: #ef4444;
+  }
+  
+  .theme-light .step-item.pending .step-status {
+    background-color: #f1f5f9;
+    color: #64748b;
+  }
+  
+  .theme-light .step-item.executing .step-status {
+    background-color: #dbeafe;
+    color: #2563eb;
+  }
+  
+  .theme-light .step-item.completed .step-status,
+  .theme-light .step-item.success .step-status {
+    background-color: #dcfce7;
+    color: #059669;
+  }
+  
+  .theme-light .step-item.error .step-status {
+    background-color: #fee2e2;
+    color: #dc2626;
+  }
+  
+  /* ========== RESULTS CONTAINER ========== */
+  .result-item {
+    margin-bottom: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  
+  /* Dark theme results */
+  .result-item {
+    background-color: rgba(23, 32, 55, 0.6);
+    border-left: 4px solid var(--neon-blue, #00c2ff);
+  }
+  
+  /* Light theme results */
+  .theme-light .result-item {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #3b82f6;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  
+  .result-item h5 {
+    margin: 0;
+    padding: 10px 15px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  .theme-light .result-item h5 {
+    background-color: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    color: #1e293b;
+  }
+  
+  .result-content {
+    padding: 10px 15px;
+    font-family: 'Roboto Mono', 'Consolas', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    max-height: 150px;
+    overflow-y: auto;
+    color: rgba(221, 235, 255, 0.95);
+    background-color: rgba(13, 17, 23, 0.3);
+  }
+  
+  .theme-light .result-content {
+    color: #475569;
+    background-color: #fafafa;
+  }
+  
+  .show-full-result-btn {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    text-align: center;
+    background-color: rgba(0, 0, 0, 0.1);
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .show-full-result-btn:hover {
+    background-color: rgba(0, 194, 255, 0.2);
+    color: white;
+  }
+  
+  .theme-light .show-full-result-btn {
+    background-color: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    color: #3b82f6;
+  }
+  
+  .theme-light .show-full-result-btn:hover {
+    background-color: #eff6ff;
+    color: #1d4ed8;
+  }
+  
+  /* ========== WORKFLOW CONTROLS ========== */
+  .workflow-controls-container {
+    margin-top: 1.25rem;
+  }
+  
+  .workflow-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  .theme-light .workflow-controls {
+    border-top: 1px solid #e2e8f0;
+  }
+  
+  .execute-btn, .stop-btn, .validate-btn, .reset-btn {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    gap: 6px;
+    border: none;
+  }
+  
+  /* Execute button - Dark Theme */
+  .execute-btn {
+    background: linear-gradient(45deg, rgba(0, 194, 255, 0.3), rgba(174, 0, 255, 0.3));
+    color: var(--text-primary, white);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  
+  .execute-btn:hover {
+    background: linear-gradient(45deg, rgba(0, 194, 255, 0.5), rgba(174, 0, 255, 0.5));
+    box-shadow: 0 4px 12px rgba(0, 194, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+  }
+  
+  .execute-btn:active {
+    transform: translateY(1px);
+  }
+  
+  /* Stop button - Dark Theme */
+  .stop-btn {
+    background: linear-gradient(45deg, rgba(255, 51, 119, 0.3), rgba(255, 102, 0, 0.3));
+    color: var(--text-primary, white);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  
+  .stop-btn:hover:not(:disabled) {
+    background: linear-gradient(45deg, rgba(255, 51, 119, 0.5), rgba(255, 102, 0, 0.5));
+    box-shadow: 0 4px 12px rgba(255, 51, 119, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+  }
+  
+  .stop-btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  
+  /* Validate button - Dark Theme */
+  .validate-btn {
+    background: rgba(255, 193, 7, 0.3);
+    color: var(--text-primary, white);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  
+  .validate-btn:hover {
+    background: rgba(255, 193, 7, 0.5);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transform: translateY(-2px);
+  }
+  
+  .validate-btn:active {
+    transform: translateY(1px);
+  }
+  
+  /* Button states - Light Theme */
+  .theme-light .execute-btn {
+    background-color: #3b82f6;
+    background-image: none;
+    color: white;
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+  }
+  
+  .theme-light .execute-btn:hover {
+    background-color: #2563eb;
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+  }
+  
+  .theme-light .stop-btn {
+    background-color: #ef4444;
+    background-image: none;
+    color: white;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+  }
+  
+  .theme-light .stop-btn:hover:not(:disabled) {
+    background-color: #dc2626;
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.4);
+  }
+  
+  .theme-light .validate-btn {
+    background-color: #f59e0b;
+    background-image: none;
+    color: white;
+    border: none;
+    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+  }
+  
+  .theme-light .validate-btn:hover {
+    background-color: #d97706;
+    box-shadow: 0 4px 8px rgba(245, 158, 11, 0.4);
+  }
+  
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  
+  /* ========== WORKFLOW ERRORS ========== */
+  .workflow-errors-container {
+    margin-top: 1.25rem;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  
+  /* Hide when empty */
+  .workflow-errors-container:empty {
     display: none;
   }
   
+  .error-message {
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    color: #ff5a65;
+    background-color: rgba(255, 90, 101, 0.1);
+    border-left: 4px solid #ff5a65;
+    font-weight: 500;
+  }
+  
+  .theme-light .error-message {
+    color: #dc2626;
+    background-color: #fee2e2;
+    border-left: 4px solid #ef4444;
+  }
+  
+  /* More detailed error styling */
   .error-item {
     margin-bottom: 15px;
     padding: 12px;
@@ -45,12 +869,6 @@
   .error-timestamp {
     font-size: 0.8rem;
     color: rgba(170, 200, 255, 0.7);
-  }
-  
-  .error-message {
-    margin-bottom: 10px;
-    color: var(--text-primary, #ffffff);
-    word-break: break-word;
   }
   
   .error-recovery-options {
@@ -91,10 +909,6 @@
     transition: opacity 0.5s ease;
   }
   
-  .message-item.fade-out {
-    opacity: 0;
-  }
-  
   .message-item.success {
     background-color: rgba(39, 201, 143, 0.1);
     border-left: 4px solid #27c98f;
@@ -110,169 +924,292 @@
     border-left: 4px solid #00c2ff;
   }
   
-  /* Execution steps enhancements */
-  .execution-step {
-    display: flex;
-    align-items: center;
-    padding: 10px;
-    margin-bottom: 8px;
-    background-color: rgba(23, 32, 55, 0.6);
-    border-radius: 4px;
-    transition: all 0.3s ease;
-  }
-  
-  .execution-step .step-number {
-    width: 24px;
-    height: 24px;
+  /* ========== RESULT MODAL ========== */
+  .result-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(3px);
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%;
-    margin-right: 10px;
-    font-weight: 600;
-    font-size: 0.8rem;
-    background-color: rgba(170, 200, 255, 0.2);
-    color: var(--text-primary, #ffffff);
+    z-index: var(--workflow-modal-z);
   }
   
-  .execution-step .step-name {
-    flex: 1;
-    white-space: nowrap;
+  .result-modal .modal-content {
+    width: 80%;
+    max-width: 800px;
+    max-height: 80vh;
+    border-radius: 10px;
     overflow: hidden;
-    text-overflow: ellipsis;
-    font-weight: 500;
+    background-color: rgba(18, 22, 36, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(52, 152, 219, 0.25);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
   }
   
-  .execution-step .step-model {
-    margin: 0 8px;
-    font-size: 0.8rem;
-    color: rgba(170, 200, 255, 0.7);
+  .theme-light .result-modal .modal-content {
+    background-color: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(80, 120, 240, 0.2);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   }
   
-  .execution-step .step-status {
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    min-width: 80px;
-    text-align: center;
+  .result-modal .modal-header {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(90deg, rgba(0, 194, 255, 0.25), rgba(174, 0, 255, 0.25));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
   
-  /* Step status styling */
-  .execution-step.pending, 
-  .execution-step .step-status.pending {
-    color: rgba(170, 200, 255, 0.7);
+  .theme-light .result-modal .modal-header {
+    background: linear-gradient(90deg, #4a89dc, #5d9cec);
+    border-bottom: 1px solid rgba(0, 120, 212, 0.2);
   }
   
-  .execution-step.executing {
-    background-color: rgba(0, 194, 255, 0.1);
-    border-left: 4px solid #00c2ff;
+  .result-modal .modal-title {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.2rem;
+    color: white;
   }
   
-  .execution-step.executing .step-number {
-    background-color: #00c2ff;
-    color: #000;
+  .theme-light .result-modal .modal-title {
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   }
   
-  .execution-step .step-status.executing {
-    background-color: rgba(0, 194, 255, 0.2);
-    color: #00c2ff;
+  .result-modal .close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: all 0.2s ease;
   }
   
-  .execution-step.completed {
-    background-color: rgba(39, 201, 143, 0.1);
-    border-left: 4px solid #27c98f;
+  .result-modal .close-btn:hover {
+    color: white;
+    transform: scale(1.1);
   }
   
-  .execution-step.completed .step-number {
-    background-color: #27c98f;
-    color: #000;
+  .result-modal .full-result {
+    padding: 20px;
+    max-height: calc(80vh - 60px);
+    overflow-y: auto;
+    font-family: 'Roboto Mono', 'Consolas', monospace;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: rgba(221, 235, 255, 0.95);
+    background-color: rgba(13, 17, 23, 0.5);
   }
   
-  .execution-step .step-status.completed {
-    background-color: rgba(39, 201, 143, 0.2);
-    color: #27c98f;
+  .theme-light .result-modal .full-result {
+    color: #1e293b;
+    background-color: #ffffff;
   }
   
-  .execution-step.error {
-    background-color: rgba(255, 51, 119, 0.1);
-    border-left: 4px solid #ff5a65;
+  /* ========== NODE DETAIL MODAL ========== */
+  .node-detail-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: var(--workflow-modal-z);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
   }
   
-  .execution-step.error .step-number {
-    background-color: #ff5a65;
-    color: #000;
+  .node-detail-modal.active {
+    opacity: 1;
+    visibility: visible;
   }
   
-  .execution-step .step-status.error {
-    background-color: rgba(255, 51, 119, 0.2);
-    color: #ff5a65;
+  .node-detail-modal .modal-content {
+    background-color: rgba(18, 22, 36, 0.95);
+    backdrop-filter: blur(8px);
+    width: 600px;
+    max-width: 90vw;
+    max-height: 80vh;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
   }
   
-  /* Results section improvements */
-  .results-container {
-    margin-top: 15px;
+  .node-detail-modal.active .modal-content {
+    transform: scale(1);
   }
   
-  .result-item {
-    margin-bottom: 12px;
-    background-color: rgba(23, 32, 55, 0.6);
-    border-left: 4px solid #00c2ff;
-    border-radius: 4px;
-  }
-  
-  .result-item.error {
-    border-left-color: #ff5a65;
-  }
-  
-  .result-header {
-    padding: 10px;
+  .node-detail-modal .modal-header {
+    padding: 15px;
+    background-color: rgba(23, 32, 55, 0.8);
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid rgba(80, 120, 240, 0.2);
   }
   
-  .result-title {
-    font-weight: 500;
+  .node-detail-modal .modal-title {
     margin: 0;
+    color: var(--text-primary, #ffffff);
+    font-weight: 500;
+    font-size: 1.2rem;
   }
   
-  .result-actions {
-    display: flex;
-    gap: 8px;
+  .node-detail-modal .modal-close {
+    background: none;
+    border: none;
+    color: rgba(170, 200, 255, 0.7);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
   }
   
-  .result-content {
-    padding: 10px;
-    max-height: 200px;
+  .node-detail-modal .modal-body {
+    padding: 15px;
     overflow-y: auto;
-    font-family: 'Roboto Mono', monospace;
-    font-size: 0.9rem;
-    white-space: pre-wrap;
-    word-break: break-word;
-    color: rgba(221, 235, 255, 0.85);
+    max-height: calc(80vh - 150px);
   }
   
-  /* Animations */
-  @keyframes slideIn {
-    from {
-      transform: translateY(-10px);
-      opacity: 0;
+  .node-detail-modal .modal-footer {
+    padding: 15px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid rgba(80, 120, 240, 0.2);
+  }
+  
+  /* ========== DRAG OVERLAY ========== */
+  .drag-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--workflow-dropover-z);
+    cursor: grabbing;
+    background-color: transparent;
+  }
+  
+  /* ========== SCROLLBAR STYLING ========== */
+  .draggable-panel ::-webkit-scrollbar,
+  .result-modal ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .draggable-panel ::-webkit-scrollbar-track,
+  .result-modal ::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
+  }
+  
+  .draggable-panel ::-webkit-scrollbar-thumb,
+  .result-modal ::-webkit-scrollbar-thumb {
+    background: rgba(0, 194, 255, 0.3);
+    border-radius: 3px;
+  }
+  
+  .draggable-panel ::-webkit-scrollbar-thumb:hover,
+  .result-modal ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 194, 255, 0.5);
+  }
+  
+  .theme-light .draggable-panel ::-webkit-scrollbar-track,
+  .theme-light .result-modal ::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+  
+  .theme-light .draggable-panel ::-webkit-scrollbar-thumb,
+  .theme-light .result-modal ::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.3);
+  }
+  
+  .theme-light .draggable-panel ::-webkit-scrollbar-thumb:hover,
+  .theme-light .result-modal ::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.5);
+  }
+  
+  /* ========== RESPONSIVE ADJUSTMENTS ========== */
+  @media (max-width: 768px) {
+    .draggable-panel {
+      width: 90vw !important;
+      left: 5vw !important;
+      right: 5vw !important;
     }
-    to {
-      transform: translateY(0);
-      opacity: 1;
+    
+    .step-model {
+      display: none;
+    }
+    
+    .step-name {
+      max-width: 120px;
+    }
+    
+    .workflow-controls {
+      flex-direction: column;
+    }
+    
+    .modal-content {
+      width: 95vw;
+      max-width: none;
     }
   }
   
+  /* ========== ANIMATIONS ========== */
   @keyframes pulse {
     0% { opacity: 0.6; }
     50% { opacity: 1; }
     100% { opacity: 0.6; }
   }
   
-  /* Empty state styling */
+  @keyframes statusPulse {
+    0% { transform: scale(0.8); opacity: 0.3; }
+    50% { transform: scale(1.5); opacity: 0.1; }
+    100% { transform: scale(0.8); opacity: 0.3; }
+  }
+  
+  @keyframes progressShimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+  
+  @keyframes stepExecuting {
+    0% { background-color: rgba(30, 41, 59, 0.6); }
+    50% { background-color: rgba(0, 194, 255, 0.1); }
+    100% { background-color: rgba(30, 41, 59, 0.6); }
+  }
+  
+  @keyframes panelFadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  @keyframes slideIn {
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  /* ========== UTILITY CLASSES ========== */
+  .hidden {
+    display: none !important;
+  }
+  
+  /* ========== EMPTY STATE STYLING ========== */
   .empty-state {
     padding: 30px 15px;
     text-align: center;
@@ -292,147 +1229,20 @@
     margin-bottom: 15px;
   }
   
-  /* Fixed workflow panel positioning */
-  .workflow-panel-container {
-    position: fixed;
-    right: 20px;
-    top: 80px;
-    width: 380px;
-    max-width: 90vw;
-    max-height: calc(100vh - 100px);
-    overflow: hidden;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    backdrop-filter: blur(8px);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-    transition: all 0.3s ease;
+  /* ========== WORKFLOW PANEL MINIMIZED STATE ========== */
+  .draggable-panel.minimized {
+    height: auto !important;
   }
   
-  .workflow-panel-header {
-    padding: 12px 15px;
-    background-color: rgba(23, 32, 55, 0.8);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid rgba(80, 120, 240, 0.2);
-  }
-  
-  .workflow-panel-title {
-    margin: 0;
-    color: var(--text-primary, #ffffff);
-    font-weight: 500;
-    font-size: 1.1rem;
-  }
-  
-  .workflow-panel-actions {
-    display: flex;
-    gap: 8px;
-  }
-  
-  .workflow-panel-content {
-    padding: 15px;
-    flex: 1;
-    overflow-y: auto;
-    background-color: rgba(18, 22, 36, 0.7);
-  }
-  
-  .workflow-panel-section {
-    margin-bottom: 20px;
-  }
-  
-  .section-title {
-    margin: 0 0 10px 0;
-    font-size: 1rem;
-    font-weight: 500;
-    color: rgba(170, 200, 255, 0.9);
-  }
-  
-  /* Minimize/expand animation */
-  .workflow-panel-container.minimized {
-    transform: translateX(calc(100% - 40px));
-  }
-  
-  .workflow-panel-container.minimized .workflow-panel-content {
+  .draggable-panel.minimized .draggable-panel-content {
     display: none;
   }
   
-  /* Modal for node details */
-  .node-detail-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    z-index: 2000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-  }
-  
-  .node-detail-modal.active {
-    opacity: 1;
-    visibility: visible;
-  }
-  
-  .modal-content {
-    background-color: rgba(18, 22, 36, 0.9);
-    backdrop-filter: blur(8px);
-    width: 600px;
-    max-width: 90vw;
-    max-height: 80vh;
-    border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    overflow: hidden;
-    transform: scale(0.95);
-    transition: transform 0.3s ease;
-  }
-  
-  .node-detail-modal.active .modal-content {
-    transform: scale(1);
-  }
-  
-  .modal-header {
-    padding: 15px;
-    background-color: rgba(23, 32, 55, 0.8);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid rgba(80, 120, 240, 0.2);
-  }
-  
-  .modal-title {
-    margin: 0;
-    color: var(--text-primary, #ffffff);
-    font-weight: 500;
-    font-size: 1.2rem;
-  }
-  
-  .modal-close {
-    background: none;
-    border: none;
-    color: rgba(170, 200, 255, 0.7);
-    font-size: 1.5rem;
-    cursor: pointer;
-    padding: 0;
-  }
-  
-  .modal-body {
-    padding: 15px;
-    overflow-y: auto;
-    max-height: calc(80vh - 150px);
-  }
-  
-  .modal-footer {
-    padding: 15px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    border-top: 1px solid rgba(80, 120, 240, 0.2);
+  /* ========== MAXIMIZED STATE ========== */
+  .draggable-panel.maximized {
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0;
   }

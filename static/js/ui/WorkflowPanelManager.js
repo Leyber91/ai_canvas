@@ -266,7 +266,6 @@ export class WorkflowPanelManager extends BasePanelManager {
             errorColor: '#e74c3c',
             successColor: '#2ecc71',
             warningColor: '#f39c12',
-            backgroundColor: 'rgba(18, 22, 36, 0.7)',
             textColor: '#ffffff'
         };
         

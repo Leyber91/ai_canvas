@@ -29,10 +29,7 @@
 /* UI indicators and controls */
 @import url('modules/_loading-indicator.css');
 @import url('modules/_typing-indicator.css');
-@import url('modules/_workflow-controls.css');
 @import url('modules/_workflow-panel.css');
-@import url('modules/_workflow-panel-enhanced.css');
-@import url('modules/_workflow-panel-fix.css');
 @import url('modules/_result-modal.css');
 @import url('modules/_validation.css');
 
