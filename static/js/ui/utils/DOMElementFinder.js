@@ -3,7 +3,13 @@
  * 
  * Enhanced DOM Element Finder that provides a centralized registry for all DOM elements.
  * Features caching, error handling, and dependency injection for DOM elements.
+ * 
+ * This is a compatibility wrapper around the new core/dom implementation.
  */
+
+import { ElementFinder } from '../../core/dom/ElementFinder.js';
+import { ElementCache } from '../../core/dom/ElementCache.js';
+import { Selectors } from '../../core/dom/Selectors.js';
 
 export class DOMElementFinder {
     /**
@@ -22,7 +28,10 @@ export class DOMElementFinder {
         ...options
       };
       
-      // Element cache
+      // Initialize new core implementation
+      this.finder = new ElementFinder(this.options);
+      
+      // For backward compatibility
       this.elementCache = new Map();
       
       // Element definitions by category
@@ -57,10 +66,14 @@ export class DOMElementFinder {
       
       Object.assign(this.elementDefinitions[category], definitions);
       
+      // Register with new core implementation
+      this.finder.selectors.register(category, definitions);
+      
       // Clear cache for these elements to ensure fresh lookups
       if (this.options.enableCache) {
         Object.keys(definitions).forEach(key => {
           this.elementCache.delete(key);
+          this.finder.cache.clear(key);
         });
       }
       
@@ -177,42 +190,16 @@ export class DOMElementFinder {
      * @returns {HTMLElement|null} - Found element or null if not found
      */
     findElement(key, selector, forceRefresh = false) {
-      // Check cache first if enabled and not forcing refresh
-      if (this.options.enableCache && !forceRefresh && this.elementCache.has(key)) {
-        return this.elementCache.get(key);
+      // Use new core implementation
+      if (forceRefresh) {
+        this.finder.cache.clear(key);
       }
       
-      let element = null;
+      const element = this.finder.findElement(key, selector, false);
       
-      // Handle different selector types
-      if (typeof selector === 'function') {
-        // If selector is a function, call it to get the element
-        try {
-          element = selector();
-        } catch (error) {
-          this.handleError(`Error calling selector function for ${key}:`, error);
-        }
-      } else if (typeof selector === 'string') {
-        // Handle ID selector (starts with #)
-        if (selector.startsWith('#')) {
-          element = document.getElementById(selector.substring(1));
-        } else {
-          // Handle other CSS selectors
-          element = document.querySelector(selector);
-        }
-      } else if (selector instanceof HTMLElement) {
-        // If selector is already an element, use it directly
-        element = selector;
-      }
-      
-      // Cache the result if caching is enabled
+      // For backward compatibility, also update the old cache
       if (this.options.enableCache && element) {
         this.elementCache.set(key, element);
-      }
-      
-      // Handle missing element
-      if (!element) {
-        this.handleMissingElement(key, selector);
       }
       
       return element;
@@ -227,34 +214,16 @@ export class DOMElementFinder {
      * @returns {NodeList|Array} - Found elements or empty array if none found
      */
     findElements(key, selector, forceRefresh = false) {
-      // Check cache first if enabled and not forcing refresh
-      if (this.options.enableCache && !forceRefresh && this.elementCache.has(`${key}[]`)) {
-        return this.elementCache.get(`${key}[]`);
+      // Use new core implementation
+      if (forceRefresh) {
+        this.finder.cache.clear(`${key}[]`);
       }
       
-      let elements = [];
+      const elements = this.finder.findElements(key, selector, false);
       
-      // Handle different selector types
-      if (typeof selector === 'function') {
-        // If selector is a function, call it to get the elements
-        try {
-          elements = selector();
-        } catch (error) {
-          this.handleError(`Error calling selector function for ${key}:`, error);
-        }
-      } else if (typeof selector === 'string') {
-        // Use querySelectorAll for all CSS selectors
-        elements = document.querySelectorAll(selector);
-      }
-      
-      // Cache the result if caching is enabled
+      // For backward compatibility, also update the old cache
       if (this.options.enableCache && elements.length > 0) {
         this.elementCache.set(`${key}[]`, elements);
-      }
-      
-      // Handle missing elements
-      if (elements.length === 0) {
-        this.handleMissingElement(key, selector, true);
       }
       
       return elements;
@@ -268,17 +237,8 @@ export class DOMElementFinder {
      * @returns {HTMLElement|null} - Found element or null if not found
      */
     getElementById(id, required = false) {
-      const originalStrictMode = this.options.strictMode;
-      
-      // Temporarily change strict mode based on required flag
-      this.options.strictMode = required;
-      
-      const element = this.findElement(id, `#${id}`);
-      
-      // Restore original strict mode
-      this.options.strictMode = originalStrictMode;
-      
-      return element;
+      // Use new core implementation
+      return this.finder.getElementById(id, required);
     }
     
     /**
@@ -290,17 +250,8 @@ export class DOMElementFinder {
      * @returns {HTMLElement|null} - Found element or null if not found
      */
     querySelector(selector, key = selector, required = false) {
-      const originalStrictMode = this.options.strictMode;
-      
-      // Temporarily change strict mode based on required flag
-      this.options.strictMode = required;
-      
-      const element = this.findElement(key, selector);
-      
-      // Restore original strict mode
-      this.options.strictMode = originalStrictMode;
-      
-      return element;
+      // Use new core implementation
+      return this.finder.querySelector(selector, key, required);
     }
     
     /**
@@ -312,17 +263,8 @@ export class DOMElementFinder {
      * @returns {NodeList} - Found elements
      */
     querySelectorAll(selector, key = selector, required = false) {
-      const originalStrictMode = this.options.strictMode;
-      
-      // Temporarily change strict mode based on required flag
-      this.options.strictMode = required;
-      
-      const elements = this.findElements(key, selector);
-      
-      // Restore original strict mode
-      this.options.strictMode = originalStrictMode;
-      
-      return elements;
+      // Use new core implementation
+      return this.finder.querySelectorAll(selector, key, required);
     }
     
     /**
@@ -333,16 +275,8 @@ export class DOMElementFinder {
      * @param {boolean} multiple - Whether this was looking for multiple elements
      */
     handleMissingElement(key, selector, multiple = false) {
-      const selectorStr = typeof selector === 'function' ? 'function()' : selector;
-      const message = multiple ? 
-        `No elements found for selector "${selectorStr}" (${key})` :
-        `Element not found for selector "${selectorStr}" (${key})`;
-      
-      if (this.options.strictMode) {
-        throw new Error(message);
-      } else if (this.options.enableWarnings) {
-        console.warn(message);
-      }
+      // Delegate to new core implementation
+      this.finder.handleMissingElement(key, selector, this.options.strictMode, multiple);
     }
     
     /**
@@ -352,11 +286,8 @@ export class DOMElementFinder {
      * @param {Error} error - Original error
      */
     handleError(message, error) {
-      if (this.options.strictMode) {
-        throw new Error(`${message} ${error.message}`);
-      } else if (this.options.enableWarnings) {
-        console.error(message, error);
-      }
+      // Delegate to new core implementation
+      this.finder.handleError(message, error);
     }
     
     /**
@@ -366,11 +297,14 @@ export class DOMElementFinder {
      * @returns {DOMElementFinder} - This instance for chaining
      */
     clearCache(key = null) {
+      // Clear both old and new caches for backward compatibility
       if (key) {
         this.elementCache.delete(key);
         this.elementCache.delete(`${key}[]`);
+        this.finder.cache.clear(key);
       } else {
         this.elementCache.clear();
+        this.finder.cache.clear();
       }
       
       return this;
@@ -391,10 +325,40 @@ export class DOMElementFinder {
           Object.assign(allDefinitions, categoryDefs);
         });
         
-        // Refresh each element
+        // Create refresh function for the new cache
+        const refreshFn = (elemKey) => {
+          // Try to get selector from elementDefinitions first
+          let selector = null;
+          for (const category in this.elementDefinitions) {
+            if (this.elementDefinitions[category][elemKey]) {
+              selector = this.elementDefinitions[category][elemKey];
+              break;
+            }
+          }
+          
+          // If not found, try from the Selectors instance
+          if (!selector) {
+            try {
+              selector = this.finder.selectors.get(elemKey);
+            } catch (e) {
+              console.warn(`Error getting selector for ${elemKey}:`, e);
+            }
+          }
+          
+          if (selector) {
+            return typeof selector === 'function' ? 
+              selector() : 
+              document.querySelector(selector);
+          }
+          return null;
+        };
+        
+        // Refresh each element in both old and new caches
         Object.entries(allDefinitions).forEach(([elemKey, selector]) => {
           this.findElement(elemKey, selector, true);
         });
+        
+        this.finder.cache.refresh(null, refreshFn);
         
         return this;
       }
@@ -410,6 +374,34 @@ export class DOMElementFinder {
       
       if (selector) {
         this.findElement(key, selector, true);
+        
+        // Also refresh in the new cache
+        this.finder.cache.refresh(key, (elemKey) => {
+          // Try to get selector from elementDefinitions first
+          let selector = null;
+          for (const category in this.elementDefinitions) {
+            if (this.elementDefinitions[category][elemKey]) {
+              selector = this.elementDefinitions[category][elemKey];
+              break;
+            }
+          }
+          
+          // If not found, try from the Selectors instance
+          if (!selector) {
+            try {
+              selector = this.finder.selectors.get(elemKey);
+            } catch (e) {
+              // Ignore errors
+            }
+          }
+          
+          if (selector) {
+            return typeof selector === 'function' ? 
+              selector() : 
+              document.querySelector(selector);
+          }
+          return null;
+        });
       }
       
       return this;
@@ -472,6 +464,9 @@ export class DOMElementFinder {
      * @returns {DOMElementFinder} - This instance for chaining
      */
     defineStandardElements() {
+      // The new Selectors class already has these defaults registered
+      // We just need to sync them with our local elementDefinitions for backward compatibility
+      
       // Core UI elements
       this.registerElements('core', {
         'app-root': '#app-root',

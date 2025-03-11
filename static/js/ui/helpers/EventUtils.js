@@ -2,7 +2,12 @@
  * ui/helpers/EventUtils.js
  * 
  * Utility functions for handling DOM events and interactions.
+ * 
+ * This is a compatibility wrapper around the new core/events implementation.
  */
+
+import { EventDelegate } from '../../core/events/EventDelegate.js';
+import { AnimationUtils } from '../../core/utils/AnimationUtils.js';
 
 export const EventUtils = {
     /**
@@ -12,36 +17,7 @@ export const EventUtils = {
      * @returns {number} Timeout ID for cleanup
      */
     createRippleEffect(e) {
-      const button = e.currentTarget;
-      const ripple = document.createElement('span');
-      
-      const rect = button.getBoundingClientRect();
-      const size = Math.max(rect.width, rect.height);
-      
-      const x = e.clientX - rect.left - size / 2;
-      const y = e.clientY - rect.top - size / 2;
-      
-      ripple.style.width = ripple.style.height = `${size}px`;
-      ripple.style.left = `${x}px`;
-      ripple.style.top = `${y}px`;
-      ripple.classList.add('ripple');
-      
-      // Remove existing ripples
-      const existingRipple = button.querySelector('.ripple');
-      if (existingRipple) {
-        existingRipple.remove();
-      }
-      
-      button.appendChild(ripple);
-      
-      // Remove ripple after animation
-      const timeout = setTimeout(() => {
-        if (ripple.parentElement === button) {
-          button.removeChild(ripple);
-        }
-      }, 600);
-      
-      return timeout;
+      return AnimationUtils.createRippleEffect(e);
     },
     
     /**
@@ -106,20 +82,11 @@ export const EventUtils = {
      * 
      * @param {Function} func - Function to debounce
      * @param {number} wait - Debounce wait time in ms
+     * @param {boolean} immediate - Whether to trigger on the leading edge
      * @returns {Function} Debounced function
      */
-    debounce(func, wait = 300) {
-      let timeout;
-      
-      return function(...args) {
-        const context = this;
-        
-        clearTimeout(timeout);
-        
-        timeout = setTimeout(() => {
-          func.apply(context, args);
-        }, wait);
-      };
+    debounce(func, wait = 300, immediate = false) {
+      return EventDelegate.debounce(func, wait, immediate);
     },
     
     /**
@@ -130,20 +97,7 @@ export const EventUtils = {
      * @returns {Function} Throttled function
      */
     throttle(func, limit = 300) {
-      let inThrottle = false;
-      
-      return function(...args) {
-        const context = this;
-        
-        if (!inThrottle) {
-          func.apply(context, args);
-          inThrottle = true;
-          
-          setTimeout(() => {
-            inThrottle = false;
-          }, limit);
-        }
-      };
+      return EventDelegate.throttle(func, limit);
     },
     
     /**
@@ -156,14 +110,7 @@ export const EventUtils = {
      * @returns {Function} Cleanup function
      */
     addEventListenerWithCleanup(element, event, handler, options = {}) {
-      if (!element) return () => {};
-      
-      element.addEventListener(event, handler, options);
-      
-      // Return cleanup function
-      return () => {
-        element.removeEventListener(event, handler, options);
-      };
+      return EventDelegate.addEventListenerWithCleanup(element, event, handler, options);
     },
     
     /**
@@ -287,20 +234,68 @@ export const EventUtils = {
      * @returns {Function} Cleanup function
      */
     handleClickOutside(element, callback) {
-      if (!element) return () => {};
-      
-      const listener = (event) => {
-        if (element && !element.contains(event.target)) {
-          callback(event);
-        }
-      };
-      
-      document.addEventListener('click', listener);
-      
-      // Return cleanup function
-      return () => {
-        document.removeEventListener('click', listener);
-      };
+      return EventDelegate.handleClickOutside(element, callback);
+    },
+    
+    /**
+     * Delegate an event to child elements matching a selector
+     * 
+     * @param {HTMLElement} element - Parent element to attach the event listener to
+     * @param {string} eventType - Event type (e.g., 'click', 'input')
+     * @param {string} selector - CSS selector for target elements
+     * @param {Function} handler - Event handler function
+     * @returns {Function} - Cleanup function to remove the event listener
+     */
+    delegate(element, eventType, selector, handler) {
+      return EventDelegate.delegate(element, eventType, selector, handler);
+    },
+    
+    /**
+     * Create a one-time event listener
+     * 
+     * @param {HTMLElement} element - Element to attach the event listener to
+     * @param {string} eventType - Event type (e.g., 'click', 'input')
+     * @param {Function} handler - Event handler function
+     * @param {Object} options - Event listener options
+     * @returns {Function} - Cleanup function to remove the event listener
+     */
+    once(element, eventType, handler, options = {}) {
+      return EventDelegate.once(element, eventType, handler, options);
+    },
+    
+    /**
+     * Create a passive event listener
+     * 
+     * @param {HTMLElement} element - Element to attach the event listener to
+     * @param {string} eventType - Event type (e.g., 'scroll', 'touchstart')
+     * @param {Function} handler - Event handler function
+     * @returns {Function} - Cleanup function to remove the event listener
+     */
+    passive(element, eventType, handler) {
+      return EventDelegate.passive(element, eventType, handler);
+    },
+    
+    /**
+     * Create a multi-event listener
+     * 
+     * @param {HTMLElement} element - Element to attach the event listeners to
+     * @param {string[]} eventTypes - Array of event types
+     * @param {Function} handler - Event handler function
+     * @param {Object} options - Event listener options
+     * @returns {Function} - Cleanup function to remove all event listeners
+     */
+    multiEvent(element, eventTypes, handler, options = {}) {
+      return EventDelegate.multiEvent(element, eventTypes, handler, options);
+    },
+    
+    /**
+     * Create an observable object that can be watched for changes
+     * 
+     * @param {Object} target - Object to make observable
+     * @returns {Proxy} - Observable proxy object
+     */
+    createObservable(target) {
+      return EventDelegate.createObservable(target);
     }
   };
   

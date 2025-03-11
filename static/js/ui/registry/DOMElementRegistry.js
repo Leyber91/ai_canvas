@@ -3,19 +3,38 @@
  * 
  * Central registry for DOM elements with consistent access patterns.
  * Uses singleton pattern to ensure only one instance exists throughout the application.
+ * 
+ * This is a compatibility wrapper around the new core/dom implementation.
  */
+
+import { Selectors } from '../../core/dom/Selectors.js';
+import { ElementFinder } from '../../core/dom/ElementFinder.js';
 
 export class DOMElementRegistry {
     constructor() {
-      // Private registry of elements
-      this.elements = {};
+      // Initialize new core implementation
+      this.selectors = new Selectors();
+      this.finder = new ElementFinder({
+        strictMode: false,
+        enableWarnings: true
+      });
       
-      // Track which elements have been requested but not found
+      // For backward compatibility
+      this.elements = {};
       this.missingElements = new Set();
       
-      // Default element selectors for the application
-      this.selectors = {
-        // Core UI elements
+      // Register default selectors
+      this.registerDefaultSelectors();
+    }
+    
+    /**
+     * Register default selectors
+     * 
+     * @private
+     */
+    registerDefaultSelectors() {
+      // Core UI elements
+      this.registerSelectors({
         'addNodeBtn': '#add-node-btn',
         'saveGraphBtn': '#save-graph-btn',
         'loadGraphBtn': '#load-graph-btn',
@@ -54,7 +73,7 @@ export class DOMElementRegistry {
         'themeContainer': '#theme-container',
         'bgCanvas': '#bg-canvas',
         'tooltip': '#tooltip'
-      };
+      });
     }
     
     /**
@@ -75,10 +94,12 @@ export class DOMElementRegistry {
      * @param {Object} selectors - Map of element keys to selectors
      */
     registerSelectors(selectors) {
-      this.selectors = {
-        ...this.selectors,
-        ...selectors
-      };
+      // Register with new core implementation
+      this.selectors.register('custom', selectors);
+      
+      // For backward compatibility - store in a separate object
+      this._selectorMap = this._selectorMap || {};
+      Object.assign(this._selectorMap, selectors);
     }
     
     /**
@@ -94,39 +115,27 @@ export class DOMElementRegistry {
         return this.elements[key];
       }
       
-      // Get selector for the key
-      const selector = this.selectors[key];
+      // Get selector - first try from the Selectors instance, then from the backward compatibility map
+      let selector = this.selectors.get(key);
+      if (!selector && this._selectorMap && this._selectorMap[key]) {
+        selector = this._selectorMap[key];
+      }
+      
       if (!selector) {
         console.warn(`No selector defined for element key: ${key}`);
         return null;
       }
       
-      // Try to find the element
-      let element = null;
-      if (selector.startsWith('#')) {
-        // ID selector (faster lookup)
-        element = document.getElementById(selector.substring(1));
-      } else {
-        // CSS selector
-        element = document.querySelector(selector);
-      }
+      const element = this.finder.findElement(key, selector, required);
       
-      // Cache the element if found
+      // Cache the element if found (for backward compatibility)
       if (element) {
         this.elements[key] = element;
-        return element;
-      }
-      
-      // Handle missing element
-      if (required && !this.missingElements.has(key)) {
-        console.error(`Required DOM element not found: ${key} (selector: ${selector})`);
-        this.missingElements.add(key);
-      } else if (!this.missingElements.has(key)) {
-        console.warn(`DOM element not found: ${key} (selector: ${selector})`);
+      } else if (required && !this.missingElements.has(key)) {
         this.missingElements.add(key);
       }
       
-      return null;
+      return element;
     }
     
     /**
@@ -137,8 +146,14 @@ export class DOMElementRegistry {
     findAllElements() {
       const foundElements = {};
       
+      // Get all selector keys from both sources
+      const keys = new Set([
+        ...this.selectors.getKeys(),
+        ...(this._selectorMap ? Object.keys(this._selectorMap) : [])
+      ]);
+      
       // Try to find each element
-      Object.keys(this.selectors).forEach(key => {
+      keys.forEach(key => {
         const element = this.findElement(key);
         if (element) {
           foundElements[key] = element;
@@ -238,7 +253,12 @@ export class DOMElementRegistry {
       
       // Register selector if id is provided
       if (options.id) {
-        this.selectors[key] = `#${options.id}`;
+        const selector = `#${options.id}`;
+        this.selectors.register('custom', { [key]: selector });
+        
+        // For backward compatibility
+        this._selectorMap = this._selectorMap || {};
+        this._selectorMap[key] = selector;
       }
       
       return element;
@@ -260,6 +280,7 @@ export class DOMElementRegistry {
         
         delete this.elements[key];
         this.missingElements.delete(key);
+        this.finder.cache.clear(key);
       }
     }
     
@@ -276,5 +297,6 @@ export class DOMElementRegistry {
     reset() {
       this.elements = {};
       this.clearMissingElements();
+      this.finder.cache.clear();
     }
   }
