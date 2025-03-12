@@ -116,3 +116,45 @@ input:focus, select:focus, textarea:focus {
   border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-lg);
 }
+
+/* Base styles for draggable panels */
+.draggable-panel {
+  position: absolute;
+  user-select: none;
+  will-change: left, top;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: box-shadow 0.3s ease;
+  touch-action: none;
+}
+
+/* Drag handle styling */
+.draggable-panel-header {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+/* Active drag state */
+.draggable-panel.dragging {
+  transition: none !important;
+  opacity: 0.98;
+  z-index: 9999;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+}
+
+.draggable-panel.dragging .draggable-panel-header {
+  cursor: grabbing;
+}
+
+/* Ensure content doesn't interfere with dragging */
+.draggable-panel-content {
+  pointer-events: auto;
+  user-select: text;
+}
+
+/* Override any transitions during drag */
+.draggable-panel.dragging * {
+  transition: none !important;
+}

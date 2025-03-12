@@ -23,10 +23,13 @@ export class DraggableManager {
         this.isDragging = false;
         this.initialX = 0;
         this.initialY = 0;
-        this.currentX = 0;
-        this.currentY = 0;
+        this.initialLeft = 0;
+        this.initialTop = 0;
         this.xOffset = 0;
         this.yOffset = 0;
+        
+        // Animation frame for smoother performance
+        this.animationFrame = null;
         
         // Bound methods
         this.dragStart = this.dragStart.bind(this);
@@ -45,6 +48,16 @@ export class DraggableManager {
         
         // Add the draggable class to the panel
         this.panel.classList.add('draggable');
+        
+        // Ensure panel has absolute positioning
+        const computedStyle = window.getComputedStyle(this.panel);
+        if (computedStyle.position === 'static') {
+            this.panel.style.position = 'absolute';
+        }
+        
+        // Store initial position
+        this.initialLeft = parseInt(computedStyle.left) || 0;
+        this.initialTop = parseInt(computedStyle.top) || 0;
         
         // Add cursor style to the handle
         this.handle.style.cursor = 'grab';
@@ -65,13 +78,22 @@ export class DraggableManager {
         this.panel.classList.add('dragging');
         this.handle.style.cursor = 'grabbing';
         
+        // Get current panel position (absolute)
+        const rect = this.panel.getBoundingClientRect();
+        const computedStyle = window.getComputedStyle(this.panel);
+        
+        // Set initial positions
         if (e.type === 'touchstart') {
-            this.initialX = e.touches[0].clientX - this.xOffset;
-            this.initialY = e.touches[0].clientY - this.yOffset;
+            this.initialX = e.touches[0].clientX;
+            this.initialY = e.touches[0].clientY;
         } else {
-            this.initialX = e.clientX - this.xOffset;
-            this.initialY = e.clientY - this.yOffset;
+            this.initialX = e.clientX;
+            this.initialY = e.clientY;
         }
+        
+        // Store initial left/top position
+        this.initialLeft = parseInt(computedStyle.left) || rect.left;
+        this.initialTop = parseInt(computedStyle.top) || rect.top;
         
         this.isDragging = true;
         
@@ -93,43 +115,63 @@ export class DraggableManager {
         if (!this.isDragging) return;
         e.preventDefault();
         
-        let clientX, clientY;
-        
-        if (e.type === 'touchmove') {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
+        // Cancel any existing animation frame
+        if (this.animationFrame) {
+            cancelAnimationFrame(this.animationFrame);
         }
         
-        // Calculate the new cursor position
-        this.currentX = clientX - this.initialX;
-        this.currentY = clientY - this.initialY;
-        
-        // Update position state
-        this.xOffset = this.currentX;
-        this.yOffset = this.currentY;
-        
-        // Apply transform to move the panel
-        this.setTranslate(this.currentX, this.currentY);
+        // Use requestAnimationFrame for smoother movement
+        this.animationFrame = requestAnimationFrame(() => {
+            let clientX, clientY;
+            
+            if (e.type === 'touchmove') {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            // Calculate the change in position
+            const dx = clientX - this.initialX;
+            const dy = clientY - this.initialY;
+            
+            // Calculate new position
+            const newLeft = this.initialLeft + dx;
+            const newTop = this.initialTop + dy;
+            
+            // Apply position constraints
+            const { left, top } = this.getConstraints(newLeft, newTop);
+            
+            // Apply position directly (more consistent than transform)
+            this.panel.style.left = `${left}px`;
+            this.panel.style.top = `${top}px`;
+        });
     }
     
     /**
      * Handle drag end event
      */
     dragEnd() {
+        if (!this.isDragging) return;
+        
+        // Cancel any pending animation frame
+        if (this.animationFrame) {
+            cancelAnimationFrame(this.animationFrame);
+            this.animationFrame = null;
+        }
+        
         // Remove dragging class
         this.panel.classList.remove('dragging');
         this.handle.style.cursor = 'grab';
         
         // Reset dragging state
-        this.initialX = this.currentX;
-        this.initialY = this.currentY;
         this.isDragging = false;
         
-        // Convert translate to absolute positioning
-        this.applyPositionFromTransform();
+        // Update initial position for next drag
+        const computedStyle = window.getComputedStyle(this.panel);
+        this.initialLeft = parseInt(computedStyle.left);
+        this.initialTop = parseInt(computedStyle.top);
         
         // Remove event listeners
         document.removeEventListener('mousemove', this.drag);
@@ -142,70 +184,29 @@ export class DraggableManager {
     }
     
     /**
-     * Apply transform to the panel
-     * @param {number} x - X translation
-     * @param {number} y - Y translation
-     */
-    setTranslate(x, y) {
-        // Ensure the panel stays within the container boundaries
-        const { left, top, right, bottom } = this.getConstraints(x, y);
-        
-        // Apply the constrained position
-        this.panel.style.transform = `translate(${left}px, ${top}px)`;
-    }
-    
-    /**
-     * Convert translateX/Y to absolute positioning
-     */
-    applyPositionFromTransform() {
-        // Get the current transform
-        const style = window.getComputedStyle(this.panel);
-        const matrix = new DOMMatrix(style.transform);
-        
-        // Get panel dimensions
-        const rect = this.panel.getBoundingClientRect();
-        
-        // Get container dimensions
-        const containerRect = this.container.getBoundingClientRect();
-        
-        // Calculate position relative to the container
-        let left = matrix.m41;
-        let top = matrix.m42;
-        
-        // Set absolute position
-        this.panel.style.transform = 'none';
-        this.panel.style.left = `${left}px`;
-        this.panel.style.top = `${top}px`;
-        
-        // Reset offset
-        this.xOffset = left;
-        this.yOffset = top;
-    }
-    
-    /**
      * Calculate position constraints
-     * @param {number} x - X translation
-     * @param {number} y - Y translation
+     * @param {number} left - Proposed left position
+     * @param {number} top - Proposed top position
      * @returns {Object} Constrained coordinates
      */
-    getConstraints(x, y) {
+    getConstraints(left, top) {
         // Get panel dimensions
-        const rect = this.panel.getBoundingClientRect();
+        const panelRect = this.panel.getBoundingClientRect();
         
         // Get container dimensions
         const containerRect = this.container.getBoundingClientRect();
         
         // Calculate the bounds
-        const minLeft = 0;
-        const maxLeft = containerRect.width - rect.width;
-        const minTop = 0;
-        const maxTop = containerRect.height - rect.height;
+        const minLeft = containerRect.left;
+        const maxLeft = containerRect.right - panelRect.width;
+        const minTop = containerRect.top;
+        const maxTop = containerRect.bottom - panelRect.height;
         
-        // Apply constraints
-        const left = Math.max(minLeft, Math.min(x, maxLeft));
-        const top = Math.max(minTop, Math.min(y, maxTop));
+        // Apply constraints with a buffer to prevent sticking at edges
+        const constrainedLeft = Math.max(minLeft, Math.min(left, maxLeft));
+        const constrainedTop = Math.max(minTop, Math.min(top, maxTop));
         
-        return { left, top, right: left + rect.width, bottom: top + rect.height };
+        return { left: constrainedLeft, top: constrainedTop };
     }
     
     /**
@@ -215,10 +216,13 @@ export class DraggableManager {
     updatePosition(position) {
         if (!this.panel) return;
         
-        if (position.left !== undefined) this.panel.style.left = position.left;
-        if (position.top !== undefined) this.panel.style.top = position.top;
-        if (position.right !== undefined) this.panel.style.right = position.right;
-        if (position.bottom !== undefined) this.panel.style.bottom = position.bottom;
+        if (position.left !== undefined) this.panel.style.left = typeof position.left === 'number' ? `${position.left}px` : position.left;
+        if (position.top !== undefined) this.panel.style.top = typeof position.top === 'number' ? `${position.top}px` : position.top;
+        
+        // Update initial position
+        const computedStyle = window.getComputedStyle(this.panel);
+        this.initialLeft = parseInt(computedStyle.left);
+        this.initialTop = parseInt(computedStyle.top);
     }
     
     /**
@@ -227,11 +231,20 @@ export class DraggableManager {
     destroy() {
         if (!this.panel || !this.handle) return;
         
+        // Cancel any pending animation
+        if (this.animationFrame) {
+            cancelAnimationFrame(this.animationFrame);
+            this.animationFrame = null;
+        }
+        
         this.handle.removeEventListener('mousedown', this.dragStart);
         this.handle.removeEventListener('touchstart', this.dragStart);
         document.removeEventListener('mousemove', this.drag);
         document.removeEventListener('touchmove', this.drag);
         document.removeEventListener('mouseup', this.dragEnd);
         document.removeEventListener('touchend', this.dragEnd);
+        
+        this.panel.classList.remove('draggable');
+        this.panel.classList.remove('dragging');
     }
 }
