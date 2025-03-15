@@ -70,12 +70,13 @@ export class GraphManager {
      */
     subscribeToEvents() {
       // Node events
-      this.eventBus.subscribe('node:add', this.nodeManager.addNode, this.nodeManager);
-      this.eventBus.subscribe('node:remove', this.nodeManager.removeNode, this.nodeManager);
+      this.eventBus.subscribe('node:add', this.handleNodeAdd.bind(this));
+      this.eventBus.subscribe('node:update', this.handleNodeUpdate.bind(this));
+      this.eventBus.subscribe('node:remove', this.handleNodeRemove.bind(this));
       
       // Edge events
-      this.eventBus.subscribe('edge:add', this.edgeManager.addEdge, this.edgeManager);
-      this.eventBus.subscribe('edge:remove', this.edgeManager.removeEdge, this.edgeManager);
+      this.eventBus.subscribe('edge:add', this.handleEdgeAdd.bind(this));
+      this.eventBus.subscribe('edge:remove', this.handleEdgeRemove.bind(this));
       
       // Track changes to mark graph as modified
       this.eventBus.subscribe('node:added', () => this.markAsModified());
@@ -83,6 +84,195 @@ export class GraphManager {
       this.eventBus.subscribe('node:updated', () => this.markAsModified());
       this.eventBus.subscribe('edge:added', () => this.markAsModified());
       this.eventBus.subscribe('edge:removed', () => this.markAsModified());
+    }
+    
+    /**
+     * Handle node add event
+     * 
+     * @param {Object} nodeData - Node data
+     */
+    handleNodeAdd(nodeData) {
+      if (!nodeData || !nodeData.id) return;
+      
+      // Add node through NodeManager
+      this.nodeManager.addNode(nodeData);
+      
+      // Call API to create node on the server
+      this.addNodeToServer(nodeData);
+    }
+    
+    /**
+     * Handle node update event
+     * 
+     * @param {Object} nodeData - Node data
+     */
+    handleNodeUpdate(nodeData) {
+      if (!nodeData || !nodeData.id) return;
+      
+      // Update node in NodeManager
+      const updatedNode = this.nodeManager.updateNode(nodeData.id, nodeData);
+      
+      // Update position if provided
+      if (nodeData.position) {
+        this.cytoscapeManager.updateNodePosition(nodeData.id, nodeData.position);
+      }
+      
+      // Call API to update node on the server
+      this.updateNodeOnServer(nodeData.id, nodeData);
+    }
+    
+    /**
+     * Handle node remove event
+     * 
+     * @param {string} nodeId - Node ID
+     */
+    handleNodeRemove(nodeId) {
+      if (!nodeId) return;
+      
+      // Remove node through NodeManager
+      this.nodeManager.removeNode(nodeId);
+      
+      // Call API to remove node from server
+      this.removeNodeFromServer(nodeId);
+    }
+    
+    /**
+     * Handle edge add event
+     * 
+     * @param {Object} edgeData - Edge data with source and target
+     */
+    handleEdgeAdd(edgeData) {
+      if (!edgeData || !edgeData.source || !edgeData.target) {
+        return;
+      }
+      
+      // Add edge through EdgeManager
+      this.edgeManager.addEdge(edgeData.source, edgeData.target);
+      
+      // Call API to create edge on server
+      this.addEdgeToServer(edgeData);
+    }
+    
+    /**
+     * Handle edge remove event
+     * 
+     * @param {string} edgeId - Edge ID
+     */
+    handleEdgeRemove(edgeId) {
+      if (!edgeId) return;
+      
+      // Remove edge through EdgeManager
+      this.edgeManager.removeEdge(edgeId);
+      
+      // Call API to remove edge from server
+      this.removeEdgeFromServer(edgeId);
+    }
+    
+    /**
+     * Add node to server
+     * 
+     * @param {Object} nodeData - Node data
+     */
+    addNodeToServer(nodeData) {
+      const graphId = this.getCurrentGraphId();
+      if (!graphId) {
+        console.warn('Cannot add node to server: No current graph ID');
+        return;
+      }
+      
+      // Make API call to POST /api/graphs/{graphId}/nodes
+      this.apiClient.post(`/api/graphs/${graphId}/nodes`, nodeData)
+        .then(response => {
+          if (response.status === 'success') {
+            console.log('Node added to server:', response.data);
+          } else {
+            console.error('Error adding node to server:', response.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error adding node:', error);
+        });
+    }
+    
+    /**
+     * Update node on server
+     * 
+     * @param {string} nodeId - Node ID
+     * @param {Object} nodeData - Node data
+     */
+    updateNodeOnServer(nodeId, nodeData) {
+      // Make API call to PUT /api/nodes/{nodeId}
+      this.apiClient.put(`/api/nodes/${nodeId}`, nodeData)
+        .then(response => {
+          if (response.status === 'success') {
+            console.log('Node updated on server:', response.data);
+          } else {
+            console.error('Error updating node on server:', response.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error updating node:', error);
+        });
+    }
+    
+    /**
+     * Remove node from server
+     * 
+     * @param {string} nodeId - Node ID
+     */
+    removeNodeFromServer(nodeId) {
+      // Make API call to DELETE /api/nodes/{nodeId}
+      this.apiClient.delete(`/api/nodes/${nodeId}`)
+        .then(response => {
+          if (response.status === 'success') {
+            console.log('Node removed from server:', response.data);
+          } else {
+            console.error('Error removing node from server:', response.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error removing node:', error);
+        });
+    }
+    
+    /**
+     * Add edge to server
+     * 
+     * @param {Object} edgeData - Edge data
+     */
+    addEdgeToServer(edgeData) {
+      // Make API call to POST /api/edges
+      this.apiClient.post('/api/edges', edgeData)
+        .then(response => {
+          if (response.status === 'success') {
+            console.log('Edge added to server:', response.data);
+          } else {
+            console.error('Error adding edge to server:', response.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error adding edge:', error);
+        });
+    }
+    
+    /**
+     * Remove edge from server
+     * 
+     * @param {string} edgeId - Edge ID
+     */
+    removeEdgeFromServer(edgeId) {
+      // Make API call to DELETE /api/edges/{edgeId}
+      this.apiClient.delete(`/api/edges/${edgeId}`)
+        .then(response => {
+          if (response.status === 'success') {
+            console.log('Edge removed from server:', response.data);
+          } else {
+            console.error('Error removing edge from server:', response.message);
+          }
+        })
+        .catch(error => {
+          console.error('Error removing edge:', error);
+        });
     }
     
     /**
