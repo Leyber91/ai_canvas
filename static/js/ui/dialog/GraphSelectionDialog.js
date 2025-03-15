@@ -37,7 +37,7 @@ export class GraphSelectionDialog extends DialogComponent {
       showCreateButton: options.showCreateButton !== false,
       emptyMessage: options.emptyMessage || 'No graphs available',
       selectedId: options.selectedId || null,
-      title: options.title || 'Select a Graph',
+      title: '', // FIXED: Set to empty string to prevent duplicate title
       listHeight: options.listHeight || '400px',
       itemClass: options.itemClass || '',
       listClass: options.listClass || '',
@@ -119,7 +119,8 @@ export class GraphSelectionDialog extends DialogComponent {
   updateGraphList(graphs) {
     if (this.dialog) {
       const content = GraphSelectionTemplate.render(graphs, {
-        onSelect: this._createDefaultSelectHandler()
+        onSelect: this._createDefaultSelectHandler(),
+        title: '' // FIXED: Set to empty string to prevent duplicate title
       });
       
       this.dialog.setContent(content);

@@ -25,6 +25,7 @@
 @import url('modules/_modal.css');
 @import url('modules/_cytoscape.css');
 @import url('modules/_cytoscape-fixes.css');
+@import url('modules/_dialog.css');
 
 /* UI indicators and controls */
 @import url('modules/_loading-indicator.css');

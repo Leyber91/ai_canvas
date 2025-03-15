@@ -1,0 +1,198 @@
+/* Enhanced Select Dropdown Styling for Graph Selection Dialog */
+
+/* Base select styling */
+.graph-selection-sort-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding: 8px 30px 8px 12px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 200px;
+    position: relative;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255, 255, 255, 0.7)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  }
+  
+  .graph-selection-sort-select:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+  
+  .graph-selection-sort-select:focus {
+    outline: none;
+    border-color: rgba(52, 152, 219, 0.6);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.25);
+  }
+  
+  /* Option styling - sadly, these have limited styling capability in browsers */
+  .graph-selection-sort-select option {
+    padding: 10px;
+    background-color: #1a1f36;
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  .graph-selection-sort-select option:checked {
+    background-color: rgba(52, 152, 219, 0.8);
+    color: white;
+  }
+  
+  .graph-selection-sort-select option:hover {
+    background-color: rgba(52, 152, 219, 0.5);
+  }
+  
+  /* Sort container styling */
+  .graph-selection-sort-container {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  
+  .graph-selection-sort-container label {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    margin-right: 5px;
+  }
+  
+  /* Light theme overrides */
+  .theme-light .graph-selection-sort-select {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #1a1f36;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(0, 0, 0, 0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  }
+  
+  .theme-light .graph-selection-sort-select:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+    border-color: rgba(0, 0, 0, 0.15);
+  }
+  
+  .theme-light .graph-selection-sort-select:focus {
+    border-color: rgba(59, 130, 246, 0.6);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+  }
+  
+  .theme-light .graph-selection-sort-select option {
+    background-color: #ffffff;
+    color: #1a1f36;
+  }
+  
+  .theme-light .graph-selection-sort-select option:checked {
+    background-color: rgba(59, 130, 246, 0.8);
+    color: white;
+  }
+  
+  .theme-light .graph-selection-sort-container label {
+    color: #4a5568;
+  }
+  
+  /* Firefox specific styling */
+  @-moz-document url-prefix() {
+    .graph-selection-sort-select {
+      text-indent: 0.01px;
+      text-overflow: '';
+      padding-right: 30px;
+    }
+  }
+  
+  /* Dialog improvements */
+  .graph-selection-dialog {
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  
+  .graph-selection-dialog-content {
+    padding: 5px 0;
+  }
+  
+  .graph-selection-search-input {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: white;
+    padding: 10px 12px 10px 35px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  }
+  
+  .graph-selection-search-input:focus {
+    outline: none;
+    border-color: rgba(52, 152, 219, 0.6);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.25);
+    background-color: rgba(255, 255, 255, 0.15);
+  }
+  
+  .theme-light .graph-selection-search-input {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #1a1f36;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .theme-light .graph-selection-search-input:focus {
+    border-color: rgba(59, 130, 246, 0.6);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+    background-color: rgba(0, 0, 0, 0.08);
+  }
+  
+  /* Create button styling */
+  .graph-selection-create-button {
+    background: linear-gradient(to right, #4caf50, #45a049);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 25px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .graph-selection-create-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(76, 175, 80, 0.4);
+  }
+  
+  .graph-selection-create-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 5px rgba(76, 175, 80, 0.4);
+  }
+  
+  /* Fix list container */
+  .graph-selection-list-container {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background-color: rgba(0, 0, 0, 0.2);
+  }
+  
+  .theme-light .graph-selection-list-container {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: rgba(255, 255, 255, 0.5);
+  }
+  
+  /* Fix for empty state */
+  .graph-selection-empty {
+    padding: 25px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+  }
+  
+  .theme-light .graph-selection-empty {
+    color: rgba(0, 0, 0, 0.5);
+  }

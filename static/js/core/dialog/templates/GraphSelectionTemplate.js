@@ -63,7 +63,6 @@ export class GraphSelectionTemplate {
     if (showSearch) {
       GraphSelectionTemplate.createSearchBox(
         container,
-        graphs,
         searchPlaceholder
       );
     }
@@ -271,11 +270,10 @@ export class GraphSelectionTemplate {
    * Create search box
    * 
    * @param {HTMLElement} container - Container element
-   * @param {Array} graphs - Array of graph objects
    * @param {string} placeholder - Search placeholder text
    * @returns {HTMLElement} The created search box
    */
-  static createSearchBox(container, graphs, placeholder) {
+  static createSearchBox(container, placeholder) {
     const searchContainer = document.createElement('div');
     searchContainer.className = 'graph-selection-search-container';
     
@@ -318,56 +316,165 @@ export class GraphSelectionTemplate {
       fontSize: '14px'
     });
     
-    // Add search functionality
+    // Add search functionality with improved clearing behavior
     searchInput.addEventListener('input', (e) => {
       const searchTerm = e.target.value.toLowerCase();
-      const graphItems = container.querySelectorAll('.graph-selection-item');
+      const graphList = container.querySelector('.graph-selection-list');
+      const listContainer = container.querySelector('.graph-selection-list-container');
+      const existingEmptyMessage = listContainer.querySelector('.graph-selection-empty');
       
-      graphItems.forEach(item => {
-        const graphId = item.getAttribute('data-graph-id');
-        const graph = graphs.find(g => g.id === graphId);
-        
-        if (!graph) return;
-        
-        const nameMatch = graph.name && graph.name.toLowerCase().includes(searchTerm);
-        const descMatch = graph.description && graph.description.toLowerCase().includes(searchTerm);
-        
-        if (nameMatch || descMatch) {
-          item.style.display = '';
-        } else {
-          item.style.display = 'none';
+      // Store original state before any modifications if not already stored
+      if (!listContainer.dataset.hasOriginalState) {
+        // Save the original list HTML before first search
+        listContainer.dataset.originalHtml = listContainer.innerHTML;
+        listContainer.dataset.hasOriginalState = 'true';
+      }
+      
+      // If the search is empty, restore to original state completely
+      if (searchTerm.trim() === '') {
+        if (existingEmptyMessage) {
+          existingEmptyMessage.remove();
         }
-      });
-      
-      // Show/hide empty message
-      const visibleItems = Array.from(graphItems).filter(item => item.style.display !== 'none');
-      const emptyMessage = container.querySelector('.graph-selection-empty');
-      
-      if (visibleItems.length === 0 && !emptyMessage) {
-        const noResults = document.createElement('div');
-        noResults.className = 'graph-selection-empty';
-        noResults.textContent = `No graphs matching "${e.target.value}"`;
         
-        StyleUtils.applyStyles(noResults, {
-          padding: '20px',
-          textAlign: 'center',
-          color: 'rgba(255, 255, 255, 0.5)'
+        // Restore original HTML
+        if (listContainer.dataset.originalHtml) {
+          listContainer.innerHTML = listContainer.dataset.originalHtml;
+          
+          // Reattach event listeners to the restored items
+          const restoredItems = listContainer.querySelectorAll('.graph-selection-item');
+          restoredItems.forEach(item => {
+            const graphId = item.getAttribute('data-graph-id');
+            
+            // Re-add click listeners
+            item.addEventListener('click', (event) => {
+              // Find the corresponding graph - this is a fallback as we don't have the graphs array here
+              const graphNameElement = item.querySelector('.graph-selection-item-name');
+              const graphName = graphNameElement ? graphNameElement.textContent : 'Unknown';
+              
+              // Call onSelect if we have a selector function in the parent container
+              const selectorFn = container.dataset.onSelectFunction;
+              if (typeof window[selectorFn] === 'function') {
+                window[selectorFn]({ id: graphId, name: graphName });
+              }
+            });
+            
+            // Re-add keyboard listeners
+            item.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                item.click();
+              }
+            });
+          });
+        }
+        
+        return; // Exit early for empty search
+      }
+      
+      // Regular search behavior for non-empty search
+      if (graphList) {
+        const graphItems = Array.from(graphList.querySelectorAll('.graph-selection-item'));
+        let visibleItemCount = 0;
+        
+        graphItems.forEach(item => {
+          const nameElement = item.querySelector('.graph-selection-item-name');
+          const descElement = item.querySelector('.graph-selection-item-description');
+          
+          const name = nameElement ? nameElement.textContent.toLowerCase() : '';
+          const description = descElement ? descElement.textContent.toLowerCase() : '';
+          
+          if (name.includes(searchTerm) || description.includes(searchTerm)) {
+            item.style.display = '';
+            visibleItemCount++;
+          } else {
+            item.style.display = 'none';
+          }
         });
         
-        const listContainer = container.querySelector('.graph-selection-list-container');
-        
-        if (listContainer) {
-          // Clear list container
-          listContainer.innerHTML = '';
-          listContainer.appendChild(noResults);
+        // Handle no results case
+        if (visibleItemCount === 0) {
+          // Remove existing "no results" message if there is one
+          if (existingEmptyMessage) {
+            existingEmptyMessage.remove();
+          }
+          
+          // Create "no results" message
+          const noResults = document.createElement('div');
+          noResults.className = 'graph-selection-empty';
+          noResults.textContent = `No graphs matching "${e.target.value}"`;
+          
+          StyleUtils.applyStyles(noResults, {
+            padding: '20px',
+            textAlign: 'center',
+            color: 'rgba(255, 255, 255, 0.5)'
+          });
+          
+          // Add to list container
+          if (listContainer) {
+            // Only append the no results message, don't clear the list
+            // This way, the items are still there but hidden
+            listContainer.appendChild(noResults);
+          }
+        } else if (visibleItemCount > 0 && existingEmptyMessage) {
+          // If we have results but also have a "no results" message, remove it
+          existingEmptyMessage.remove();
         }
-      } else if (visibleItems.length > 0 && emptyMessage) {
-        emptyMessage.remove();
       }
+    });
+    
+    // Clear button for the search box
+    const clearButton = document.createElement('button');
+    clearButton.type = 'button';
+    clearButton.className = 'graph-selection-search-clear';
+    clearButton.innerHTML = '&times;';
+    clearButton.title = 'Clear search';
+    
+    StyleUtils.applyStyles(clearButton, {
+      position: 'absolute',
+      right: '10px',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      color: 'rgba(255, 255, 255, 0.5)',
+      backgroundColor: 'transparent',
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: '16px',
+      padding: '0',
+      width: '20px',
+      height: '20px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      opacity: '0', // Start hidden
+      transition: 'opacity 0.2s ease',
+      pointerEvents: 'none'
+    });
+    
+    // Show/hide clear button based on input
+    searchInput.addEventListener('input', () => {
+      if (searchInput.value.length > 0) {
+        StyleUtils.applyStyles(clearButton, {
+          opacity: '1',
+          pointerEvents: 'auto'
+        });
+      } else {
+        StyleUtils.applyStyles(clearButton, {
+          opacity: '0',
+          pointerEvents: 'none'
+        });
+      }
+    });
+    
+    // Clear search when button is clicked
+    clearButton.addEventListener('click', () => {
+      searchInput.value = '';
+      searchInput.dispatchEvent(new Event('input'));
+      searchInput.focus();
     });
     
     searchContainer.appendChild(searchIcon);
     searchContainer.appendChild(searchInput);
+    searchContainer.appendChild(clearButton);
     container.appendChild(searchContainer);
     
     return searchContainer;
@@ -423,7 +530,7 @@ export class GraphSelectionTemplate {
       sortSelect.appendChild(optionElement);
     });
     
-    // Add sort functionality
+    // Add sort functionality - FIXED: Get data from DOM elements instead of graphs array
     sortSelect.addEventListener('change', (e) => {
       const sortValue = e.target.value;
       const graphList = container.querySelector('.graph-selection-list');
@@ -432,25 +539,30 @@ export class GraphSelectionTemplate {
       
       const graphItems = Array.from(graphList.querySelectorAll('.graph-selection-item'));
       
-      // Sort graph items
+      // Get graph data for each item - FIXED: Now we get graph data from the DOM elements
       graphItems.sort((a, b) => {
         const aId = a.getAttribute('data-graph-id');
         const bId = b.getAttribute('data-graph-id');
         
-        const aGraph = graphs.find(g => g.id === aId);
-        const bGraph = graphs.find(g => g.id === bId);
+        // Get data from DOM elements instead of referencing the graphs array
+        const aName = a.querySelector('.graph-selection-item-name').textContent;
+        const bName = b.querySelector('.graph-selection-item-name').textContent;
         
-        if (!aGraph || !bGraph) return 0;
+        const aDateText = a.querySelector('.graph-selection-item-date').textContent.replace('Created: ', '');
+        const bDateText = b.querySelector('.graph-selection-item-date').textContent.replace('Created: ', '');
+        
+        const aDate = new Date(aDateText);
+        const bDate = new Date(bDateText);
         
         switch (sortValue) {
           case 'name':
-            return (aGraph.name || '').localeCompare(bGraph.name || '');
+            return aName.localeCompare(bName);
           case 'name-desc':
-            return (bGraph.name || '').localeCompare(aGraph.name || '');
+            return bName.localeCompare(aName);
           case 'date':
-            return new Date(bGraph.creation_date || 0) - new Date(aGraph.creation_date || 0);
+            return bDate - aDate; // Newest first
           case 'date-asc':
-            return new Date(aGraph.creation_date || 0) - new Date(bGraph.creation_date || 0);
+            return aDate - bDate; // Oldest first
           default:
             return 0;
         }
