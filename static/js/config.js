@@ -37,7 +37,8 @@ export const config = {
     autoSaveInterval: 60000, // 1 minute
     nodeColors: {
       ollama: '#3498db', // Blue
-      groq: '#9b59b6'    // Purple
+      groq: '#9b59b6',   // Purple
+      nvidia: '#76b900'  // NVIDIA green
     }
   },
 
@@ -49,18 +50,30 @@ export const config = {
       defaultMaxTokens: 1024
     },
     groq: {
-      defaultModel: 'mixtral-8x7b-32768',
+      defaultModel: 'llama-3.3-70b-versatile',
       defaultTemperature: 0.7,
       defaultMaxTokens: 1024
+    },
+    nvidia: {
+      defaultModel: 'nvidia/nemotron-3-ultra-550b-a55b',
+      defaultTemperature: 0.6,
+      defaultMaxTokens: 2048
     },
     fallbackModels: {
       ollama: ['llama3', 'llama2', 'mistral'],
       groq: [
+        'llama-3.3-70b-versatile',
         'deepseek-r1-distill-llama-70b',
-        'deepseek-r1-distill-llama-32b',
-        'mixtral-8x7b-32768',
+        'deepseek-r1-distill-qwen-32b',
         'qwen-2.5-32b',
         'qwen-2.5-coder-32b'
+      ],
+      nvidia: [
+        'nvidia/nemotron-3-ultra-550b-a55b',
+        'nvidia/llama-3.3-nemotron-super-49b-v1',
+        'deepseek-ai/deepseek-r1',
+        'qwen/qwq-32b',
+        'meta/llama-3.3-70b-instruct'
       ]
     }
   },
@@ -129,6 +142,12 @@ export const defaultNodeSettings = {
     model: config.models.groq.defaultModel,
     temperature: config.models.groq.defaultTemperature,
     maxTokens: config.models.groq.defaultMaxTokens,
+    systemMessage: "You are a helpful AI assistant."
+  },
+  nvidia: {
+    model: config.models.nvidia.defaultModel,
+    temperature: config.models.nvidia.defaultTemperature,
+    maxTokens: config.models.nvidia.defaultMaxTokens,
     systemMessage: "You are a helpful AI assistant."
   }
 };

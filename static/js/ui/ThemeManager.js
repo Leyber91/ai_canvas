@@ -14,8 +14,9 @@ import { DOMElementFinder } from './theme/utils/DOMElementFinder.js';
 import { EventListenerSetup } from './theme/events/EventListenerSetup.js';
 import { SpaceBackground } from './theme/background/SpaceBackground.js';
 import { UIAnimations } from './theme/animations/UIAnimations.js';
-import { WorkflowPanelManager } from './WorkflowPanelManager.js';
-import { ConversationPanelManager } from './theme/panels/ConversationPanelManager.js';
+// Panel managers are owned by UIManager; ThemeManager reuses those instances
+// rather than constructing its own (which previously double-bound the DOM and
+// double-subscribed workflow events).
 import { NodeChatDialogManager } from './theme/chat/NodeChatDialogManager.js';
 import { CytoscapeThemeManager } from './theme/cytoscape/CytoscapeThemeManager.js';
 import { ExecutionUIManager } from './theme/execution/ExecutionUIManager.js';
@@ -76,8 +77,10 @@ export class ThemeManager {
     
     // Initialize sub-managers that need DOM elements
     this.eventSetup = new EventListenerSetup(this, this.elements, this.eventBus);
-    this.workflowPanelManager = new WorkflowPanelManager(this);
-    this.conversationPanelManager = new ConversationPanelManager(this.elements, this.eventBus);
+    // Reuse the UIManager's panel managers (constructed in its constructor) instead
+    // of building duplicates that would double-bind the DOM and double-fire events.
+    this.workflowPanelManager = this.uiManager.workflowPanelManager;
+    this.conversationPanelManager = this.uiManager.conversationPanelManager;
     this.nodeChatManager = new NodeChatDialogManager(this, this.elements, this.eventBus);
     this.executionUIManager = new ExecutionUIManager(this, this.elements, this.eventBus);
     this.tooltipManager = new TooltipManager(this.elements.tooltip);
@@ -91,10 +94,8 @@ export class ThemeManager {
     // Initialize animations
     this.animationManager.initializeAnimations();
     
-    // Initialize panels
-    this.workflowPanelManager.initialize();
-    this.conversationPanelManager.initialize();
-    
+    // Panels are owned and initialized by the UIManager; do not re-initialize them here.
+
     // Initialize node chat dialog
     this.nodeChatManager.initialize();
     

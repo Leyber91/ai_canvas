@@ -44,6 +44,10 @@ export class ThemeService {
     this.handleNodeExecuting = this.handleNodeExecuting.bind(this);
     this.subscribeToThemeChanges = this.subscribeToThemeChanges.bind(this);
     this.saveThemePreference = this.saveThemePreference.bind(this);
+    this.handleSystemThemeChange = this.handleSystemThemeChange.bind(this);
+
+    // Stored so its listener can actually be detached on destroy().
+    this.darkModeMediaQuery = null;
   }
   
   /**
@@ -84,28 +88,32 @@ export class ThemeService {
   setupSystemThemeListener() {
     // Check if browser supports prefers-color-scheme
     if (window.matchMedia) {
-      const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      
-      // Add listener for changes
+      this.darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+      // Use a stored bound handler (not an anonymous closure) so destroy() can
+      // actually detach it.
       try {
         // Chrome & Firefox
-        darkModeMediaQuery.addEventListener('change', (e) => {
-          if (this.state.useSystemTheme) {
-            this.applyTheme(e.matches ? 'dark' : 'light');
-          }
-        });
+        this.darkModeMediaQuery.addEventListener('change', this.handleSystemThemeChange);
       } catch (error1) {
         try {
           // Safari
-          darkModeMediaQuery.addListener((e) => {
-            if (this.state.useSystemTheme) {
-              this.applyTheme(e.matches ? 'dark' : 'light');
-            }
-          });
+          this.darkModeMediaQuery.addListener(this.handleSystemThemeChange);
         } catch (error2) {
           console.warn('Browser does not support media query listeners');
         }
       }
+    }
+  }
+
+  /**
+   * Apply the system theme on change, when the user follows the system theme.
+   *
+   * @param {MediaQueryListEvent} e - Media query change event
+   */
+  handleSystemThemeChange(e) {
+    if (this.state.useSystemTheme) {
+      this.applyTheme(e.matches ? 'dark' : 'light');
     }
   }
   
@@ -296,11 +304,16 @@ export class ThemeService {
    * Clean up resources
    */
   destroy() {
-    // Clean up event listeners
-    if (window.matchMedia) {
-      const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      darkModeMediaQuery.removeEventListener('change', this.handleSystemThemeChange);
-      darkModeMediaQuery.removeListener(this.handleSystemThemeChange);
+    // Detach the system-theme listener using the stored media query + bound
+    // handler. Previously this referenced an undefined handler and re-derived a
+    // fresh media query, so the original anonymous listener never detached.
+    if (this.darkModeMediaQuery) {
+      try {
+        this.darkModeMediaQuery.removeEventListener('change', this.handleSystemThemeChange);
+      } catch (e) {
+        try { this.darkModeMediaQuery.removeListener(this.handleSystemThemeChange); } catch (e2) {}
+      }
+      this.darkModeMediaQuery = null;
     }
   }
 }

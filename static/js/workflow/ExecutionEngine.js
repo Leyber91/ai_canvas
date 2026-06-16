@@ -176,7 +176,7 @@ export class ExecutionEngine {
           console.log("Attempting server execution for graph:", graphId);
           
           // Execute the workflow via the API with a timeout
-          const responsePromise = apiClient.post('/api/execute', {
+          const responsePromise = apiClient.post('/api/workflow/execute', {
             graph_id: graphId
           });
           
@@ -211,7 +211,8 @@ export class ExecutionEngine {
           console.error("Workflow execution API error:", error);
           
           // Check if 404 error to mark server execution unavailable
-          if (error.response && error.response.status === 404) {
+          // (APIClient sets error.status, not error.response)
+          if (error.status === 404) {
             console.log("Server execution endpoint not available, marking for future bypass");
             this.isServerExecutionAvailable = false;
             localStorage.setItem('aiCanvas_skipExecuteApiCall', 'true');

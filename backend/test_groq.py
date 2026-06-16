@@ -61,7 +61,6 @@ alt_test_data = {
 
 # Log request details
 log("Sending request to Groq API:")
-log(f"API Key (first 5 chars): {groq_api_key[:5]}...")
 log(f"Model: {test_data['model']}")
 log(f"Messages: {str(test_data['messages'])}")
 log(f"Temperature: {test_data['temperature']}")

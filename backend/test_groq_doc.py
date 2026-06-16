@@ -48,9 +48,7 @@ test_data = {
 
 # Log request details
 log("Sending request to Groq API following documentation example:")
-log(f"API Key (first 5 chars): {groq_api_key[:5]}...")
 log(f"URL: {groq_url}")
-log(f"Headers: {headers}")
 log(f"Request data: {json.dumps(test_data, indent=2)}")
 
 try:

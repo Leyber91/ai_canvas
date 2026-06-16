@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" class="theme-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Canvas — Reasoning Diff</title>
+  <link rel="stylesheet" href="./css/modules/_variables.css">
+  <link rel="stylesheet" href="./css/modules/_theme-variables.css">
+  <link rel="stylesheet" href="./css/modules/_reasoning.css">
+  <link rel="stylesheet" href="./css/modules/_reasoning-diff.css">
+  <style>
+    body {
+      margin: 0;
+      background: var(--theme-bg-primary, #060818);
+      color: var(--theme-text-primary, #fff);
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+    }
+    a { color: var(--neon-blue, #00c2ff); }
+  </style>
+</head>
+<body>
+  <div class="rd-shell">
+    <h1 class="rd-title">Reasoning Diff</h1>
+    <p class="rd-sub">
+      One prompt, many reasoning models &mdash; chain-of-thought rendered side by side.
+      Traces from <code>reasoning_content</code> and inline <code>&lt;think&gt;</code> are normalized
+      to one collapsible block, so Nemotron, DeepSeek-R1 and a plain model all read the same way.
+    </p>
+
+    <div class="rd-controls">
+      <textarea id="rd-prompt" class="rd-prompt" placeholder="Ask something that rewards reasoning...">Which is larger: 9.11 or 9.9? Answer in one line, briefly justified.</textarea>
+      <div id="rd-models" class="rd-models"></div>
+      <div class="rd-actions">
+        <button id="rd-run" class="rd-btn">Compare</button>
+        <button id="rd-demo" class="rd-btn rd-btn-ghost">Load example</button>
+        <span id="rd-status" class="rd-status"></span>
+      </div>
+    </div>
+
+    <div id="rd-grid" class="rd-grid"></div>
+  </div>
+
+  <script type="module">
+    import { renderComparison, runComparison } from './js/ui/reasoning-diff.js';
+
+    const DEFAULT_MODELS = [
+      { backend: 'groq',   model: 'deepseek-r1-distill-llama-70b',     label: 'DeepSeek-R1 70B · Groq',          on: true },
+      { backend: 'nvidia', model: 'nvidia/nemotron-3-ultra-550b-a55b', label: 'Nemotron-3 Ultra · NVIDIA',       on: true },
+      { backend: 'nvidia', model: 'deepseek-ai/deepseek-r1',           label: 'DeepSeek-R1 · NVIDIA',            on: false },
+      { backend: 'groq',   model: 'qwen-2.5-32b',                      label: 'Qwen2.5 32B · Groq',              on: false },
+      { backend: 'ollama', model: 'qwq',                               label: 'QwQ · Ollama (local)',            on: false },
+      { backend: 'groq',   model: 'llama-3.1-8b-instant',              label: 'Llama-3.1-8B · Groq (no reasoning)', on: true },
+    ];
+
+    // Canned results for the showcase / offline demo: two reasoning models reason
+    // correctly (traces visible) while a fast non-reasoning model fails with no trace.
+    const DEMO = [
+      { backend: 'groq', model: 'deepseek-r1-distill-llama-70b', latency_ms: 1430, error: null,
+        content: "<think>Compare 9.11 and 9.9. Line up the decimals: 9.11 vs 9.90. Compare hundredths: 11 vs 90. Since 90 > 11, 9.9 is larger. The trap is reading \"11 > 9\" and ignoring place value.</think>**9.9 is larger** — aligning decimals gives 9.90 vs 9.11, and 90 hundredths beat 11 hundredths." },
+      { backend: 'nvidia', model: 'nvidia/nemotron-3-ultra-550b-a55b', latency_ms: 2210, error: null,
+        content: "<think>9.11 versus 9.9. Tempting: 11 looks bigger than 9. But place value matters — 9.9 is 9.90. Now 0.90 > 0.11, so 9.9 wins. Sanity check as money: $9.90 vs $9.11 — the first is more.</think>**9.9 > 9.11.** Easiest as money: $9.90 beats $9.11 by 79 cents." },
+      { backend: 'groq', model: 'llama-3.1-8b-instant', latency_ms: 240, error: null,
+        content: "9.11 is larger than 9.9, since 11 is greater than 9 after the decimal point." },
+    ];
+
+    const promptEl = document.getElementById('rd-prompt');
+    const modelsEl = document.getElementById('rd-models');
+    const grid = document.getElementById('rd-grid');
+    const statusEl = document.getElementById('rd-status');
+    const runBtn = document.getElementById('rd-run');
+
+    const status = (m) => { statusEl.textContent = m || ''; };
+
+    // Build model checkboxes
+    for (const m of DEFAULT_MODELS) {
+      const label = document.createElement('label');
+      label.className = 'rd-model-opt';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = m.on;
+      cb.dataset.backend = m.backend;
+      cb.dataset.model = m.model;
+      label.append(cb, document.createTextNode(' ' + m.label));
+      modelsEl.appendChild(label);
+    }
+
+    async function compare() {
+      const prompt = promptEl.value.trim();
+      if (!prompt) { status('Enter a prompt.'); return; }
+      const models = [...modelsEl.querySelectorAll('input:checked')]
+        .map(c => ({ backend: c.dataset.backend, model: c.dataset.model }));
+      if (!models.length) { status('Pick at least one model.'); return; }
+
+      status(`Comparing ${models.length} model(s)…`);
+      runBtn.disabled = true;
+      try {
+        const results = await runComparison({ prompt, system: 'You are a helpful assistant.', models });
+        renderComparison(grid, results);
+        status(`Done — ${results.length} result(s).`);
+      } catch (e) {
+        status('Error: ' + e.message);
+      } finally {
+        runBtn.disabled = false;
+      }
+    }
+
+    runBtn.addEventListener('click', compare);
+    document.getElementById('rd-demo').addEventListener('click', () => {
+      renderComparison(grid, DEMO);
+      status('Loaded example (offline) — 9.11 vs 9.9.');
+    });
+
+    // Auto-load the example for showcase/screenshot when ?demo=1
+    if (new URLSearchParams(location.search).has('demo')) {
+      renderComparison(grid, DEMO);
+      status('Example loaded.');
+    }
+  </script>
+</body>
+</html>

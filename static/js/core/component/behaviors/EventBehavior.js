@@ -75,15 +75,16 @@ export const EventBehavior = {
       
       // Create bound handler
       const boundHandler = handler.bind(handlerContext);
-      
-      // Subscribe to event
-      this.eventBus.subscribe(event, boundHandler, handlerContext);
-      
+
+      // Subscribe and keep the unsubscribe closure the bus returns (it removes
+      // the exact subscriber, so cleanup works even when handlers are shared).
+      const busUnsub = this.eventBus.subscribe(event, boundHandler, handlerContext);
+
       // Store subscription for cleanup
       this._eventSubscriptions = this._eventSubscriptions || [];
-      const subscription = { event, handler: boundHandler, context: handlerContext };
+      const subscription = { event, handler: boundHandler, context: handlerContext, busUnsub };
       this._eventSubscriptions.push(subscription);
-      
+
       // Return unsubscribe function
       return () => this.unsubscribe(subscription);
     },
@@ -94,17 +95,22 @@ export const EventBehavior = {
      * @param {Object} subscription - Subscription object
      */
     unsubscribe(subscription) {
-      if (!this.eventBus || !subscription) return;
-      
-      // Unsubscribe from event bus
-      this.eventBus.unsubscribe(
-        subscription.event,
-        subscription.handler,
-        subscription.context
-      );
-      
+      if (!subscription) return;
+
+      // Prefer the closure the bus returned (removes the exact subscriber);
+      // fall back to a direct call for older subscription objects.
+      if (typeof subscription.busUnsub === 'function') {
+        subscription.busUnsub();
+      } else if (this.eventBus) {
+        this.eventBus.unsubscribe(
+          subscription.event,
+          subscription.handler,
+          subscription.context
+        );
+      }
+
       // Remove from subscriptions list
-      const index = this._eventSubscriptions.indexOf(subscription);
+      const index = this._eventSubscriptions ? this._eventSubscriptions.indexOf(subscription) : -1;
       if (index !== -1) {
         this._eventSubscriptions.splice(index, 1);
       }
@@ -203,7 +209,9 @@ export const EventBehavior = {
       // Clean up event bus subscriptions
       if (this._eventSubscriptions) {
         this._eventSubscriptions.forEach(subscription => {
-          if (this.eventBus) {
+          if (typeof subscription.busUnsub === 'function') {
+            subscription.busUnsub();
+          } else if (this.eventBus) {
             this.eventBus.unsubscribe(
               subscription.event,
               subscription.handler,

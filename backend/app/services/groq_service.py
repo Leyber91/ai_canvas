@@ -26,7 +26,6 @@ GROQ_MODELS = [
     "llama3-70b-8192",                 # 30 req/min, 14,400 req/day, 6,000 tokens/min, 500,000 tokens/day
     "llama3-8b-8192",                  # 30 req/min, 14,400 req/day, 6,000 tokens/min, 500,000 tokens/day
     "mistral-saba-24b",                # 30 req/min, 1,000 req/day, 6,000 tokens/min, 500,000 tokens/day
-    "mixtral-8x7b-32768",              # 30 req/min, 14,400 req/day, 5,000 tokens/min, 500,000 tokens/day
     "qwen-2.5-32b",                    # 30 req/min, 1,000 req/day, 6,000 tokens/min, No token limit/day
     "qwen-2.5-coder-32b"               # 30 req/min, 1,000 req/day, 6,000 tokens/min, No token limit/day
 ]
@@ -47,7 +46,6 @@ GROQ_MODEL_LIMITS = {
     "llama3-70b-8192": {"req_per_min": 30, "req_per_day": 14400, "tokens_per_min": 6000, "tokens_per_day": 500000},
     "llama3-8b-8192": {"req_per_min": 30, "req_per_day": 14400, "tokens_per_min": 6000, "tokens_per_day": 500000},
     "mistral-saba-24b": {"req_per_min": 30, "req_per_day": 1000, "tokens_per_min": 6000, "tokens_per_day": 500000},
-    "mixtral-8x7b-32768": {"req_per_min": 30, "req_per_day": 14400, "tokens_per_min": 5000, "tokens_per_day": 500000},
     "qwen-2.5-32b": {"req_per_min": 30, "req_per_day": 1000, "tokens_per_min": 6000, "tokens_per_day": "No limit"},
     "qwen-2.5-coder-32b": {"req_per_min": 30, "req_per_day": 1000, "tokens_per_min": 6000, "tokens_per_day": "No limit"}
 }

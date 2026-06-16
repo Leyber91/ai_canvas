@@ -314,13 +314,18 @@ export class BaseComponent {
     
     // Bind the handler to this instance if not already bound
     const boundHandler = handler.bind ? handler.bind(this) : handler;
-    
-    // Subscribe to event
-    this.eventBus.subscribe(eventName, boundHandler, this);
-    
+
+    // subscribe() returns an unsubscribe closure bound to the exact subscriber;
+    // use it for cleanup so destroyed components actually stop receiving events.
+    const unsubscribe = this.eventBus.subscribe(eventName, boundHandler, this);
+
     // Create cleanup function
     const cleanup = () => {
-      this.eventBus.unsubscribe(eventName, boundHandler, this);
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      } else {
+        this.eventBus.unsubscribe(eventName, boundHandler, this);
+      }
     };
     
     // Store for later cleanup

@@ -7,6 +7,19 @@ from flask_migrate import Migrate
 # Import database instance
 from .models import db
 
+# Enable SQLite foreign-key enforcement so ON DELETE cascades work and orphan
+# rows are rejected. No-op for non-SQLite engines (e.g. PostgreSQL).
+import sqlite3
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+
+@event.listens_for(Engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
 # Initialize SocketIO for real-time communication
 socketio = SocketIO()
 migrate = Migrate()
@@ -52,8 +65,13 @@ def initialize_extensions(app):
         # Split comma-separated origins into a list
         allowed_origins = [origin.strip() for origin in allowed_origins.split(',')]
     
-    # Initialize CORS with proper origins
-    CORS(app)
+    # Initialize CORS with the configured origins. Defaults to permissive '*'
+    # when CORS_ALLOWED_ORIGINS is unset; otherwise honours the allowlist for the
+    # API surface (previously CORS(app) ignored the parsed list entirely).
+    if allowed_origins == '*':
+        CORS(app)
+    else:
+        CORS(app, resources={r"/api/*": {"origins": allowed_origins}}, supports_credentials=True)
     
     # Initialize the database
     db.init_app(app)

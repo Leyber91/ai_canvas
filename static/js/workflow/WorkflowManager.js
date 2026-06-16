@@ -281,7 +281,19 @@ export class WorkflowManager {
   getCycleInfo() {
     return this.cycleDetector.getCycleDetails();
   }
-  
+
+  /**
+   * Check whether adding an edge would create a cycle in the current graph.
+   * Delegates to the cycle detector; used by the connect-node guard in the UI.
+   *
+   * @param {string} sourceId - Source node ID
+   * @param {string} targetId - Target node ID
+   * @returns {boolean} True if the edge would create a cycle
+   */
+  wouldCreateCycle(sourceId, targetId) {
+    return this.cycleDetector.wouldCreateCycle(sourceId, targetId);
+  }
+
   /**
    * Get execution order for the current graph
    * 

@@ -28,7 +28,7 @@ class AICanvas {
     // Create core services
     this.eventBus = new EventBus();
     this.errorHandler = new ErrorHandler(this.eventBus);
-    this.apiClient = new APIClient(config.apiBaseUrl, this.eventBus, this.errorHandler);
+    this.apiClient = new APIClient(config.apiBaseUrl, this.eventBus, this.errorHandler, config.apiTimeout);
     this.storageManager = new StorageManager(this.eventBus);
     
     // Create domain-specific modules
@@ -42,12 +42,17 @@ class AICanvas {
     
     // Create workflow manager with all required dependencies
     this.workflowManager = new WorkflowManager(
-      this.apiClient, 
-      this.eventBus, 
-      this.graphManager, 
+      this.apiClient,
+      this.eventBus,
+      this.graphManager,
       this.conversationManager
     );
-    
+
+    // Give the graph manager a back-reference to the workflow manager so the
+    // connect-node cycle-prevention guard (NodeOperationsManager) and
+    // highlightCycles() can reach cycle detection.
+    this.graphManager.workflowManager = this.workflowManager;
+
     // Create UI manager last since it depends on all other modules
     this.uiManager = new UIManager(
       this.eventBus,

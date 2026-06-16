@@ -90,20 +90,33 @@ export class EventBus {
      * @param {string} event - Event name
      * @param {Object} subscriber - Subscriber object
      */
-    unsubscribe(event, subscriber) {
-      if (!this.subscribers[event]) return;
-      
-      const index = this.subscribers[event].indexOf(subscriber);
+    unsubscribe(event, subscriberOrCallback) {
+      // Map legacy names so direct callers (passing 'message:received', etc.)
+      // resolve to the same bucket subscribe() stored under. Idempotent for
+      // already-standard names, so the internal closure path still works.
+      const standardEvent = EventBusService.getLegacyEventMapping(event);
+      const list = this.subscribers[standardEvent];
+      if (!list) return;
+
+      // Accept either the subscriber object (from the closure subscribe()
+      // returns) OR the raw callback function. Previously only the object was
+      // matched, so every caller that kept the handler reference silently
+      // no-op'd and destroyed components kept receiving events.
+      let index = list.indexOf(subscriberOrCallback);
+      if (index === -1) {
+        index = list.findIndex(s => s.callback === subscriberOrCallback);
+      }
+
       if (index !== -1) {
-        this.subscribers[event].splice(index, 1);
-        
+        list.splice(index, 1);
+
         if (this.debugMode) {
-          console.log(`[EventBus] Unsubscribed from "${event}" (remaining subscribers: ${this.subscribers[event].length})`);
+          console.log(`[EventBus] Unsubscribed from "${standardEvent}" (remaining subscribers: ${list.length})`);
         }
-        
+
         // Clean up empty subscriber arrays
-        if (this.subscribers[event].length === 0) {
-          delete this.subscribers[event];
+        if (list.length === 0) {
+          delete this.subscribers[standardEvent];
         }
       }
     }
@@ -134,163 +147,6 @@ export class EventBus {
       const unsubscribe = this.subscribe(standardEvent, wrapperCallback, context);
       
       return unsubscribe;
-    }
-    
-    /**
-     * Publish an event with data
-     * 
-     * @param {string} event - Event name to publish
-     * @param {any} data - Data to pass to subscribers
-     * @returns {boolean} Whether the event was delivered to any subscribers
-     */
-    publish(event, data = null) {
-      const startTime = this.trackPerformance ? performance.now() : null;
-      
-      // Map legacy event names to standardized ones
-      const standardEvent = EventBusService.getLegacyEventMapping(event);
-      
-      // Track event publication
-      this.eventStats.published[standardEvent] = (this.eventStats.published[standardEvent] || 0) + 1;
-      
-      // Always log workflow events
-      const isWorkflowEvent = standardEvent.startsWith('workflow:');
-      const isDebugEvent = standardEvent.startsWith('debug:');
-      
-      if ((isWorkflowEvent && !isDebugEvent) || this.debugMode) {
-        console.log(`[EventBus] Publishing event: ${standardEvent}`, data);
-      }
-      
-      // Add to history
-      this.eventHistory.unshift({
-        timestamp: new Date(),
-        event: standardEvent,
-        originalEvent: event !== standardEvent ? event : undefined,
-        data,
-        subscriberCount: this.subscribers[standardEvent]?.length || 0
-      });
-      
-      // Trim history if needed
-      if (this.eventHistory.length > this.maxHistoryLength) {
-        this.eventHistory.length = this.maxHistoryLength;
-      }
-      
-      // Check if there are subscribers
-      if (!this.subscribers[standardEvent] || this.subscribers[standardEvent].length === 0) {
-        if (this.warningMode && isWorkflowEvent && !isDebugEvent) {
-          console.warn(`[EventBus] No subscribers for workflow event: ${standardEvent}`);
-        }
-        return false;
-      }
-      
-      // Track delivery statistics
-      this.eventStats.delivered[standardEvent] = (this.eventStats.delivered[standardEvent] || 0) + 1;
-      
-      // Call each subscriber with error isolation
-      const subscriberCount = this.subscribers[standardEvent].length;
-      let successCount = 0;
-      
-      // Create a safe copy of subscribers to prevent modification during iteration
-      const currentSubscribers = [...this.subscribers[standardEvent]];
-      
-      currentSubscribers.forEach((subscriber, index) => {
-        try {
-          // Execute the callback in the proper context
-          if (subscriber.context) {
-            subscriber.callback.call(subscriber.context, data);
-          } else {
-            subscriber.callback(data);
-          }
-          
-          successCount++;
-          
-          if (this.debugMode) {
-            console.log(`[EventBus] Delivered "${standardEvent}" to subscriber ${index+1}/${subscriberCount}`);
-          }
-        } catch (error) {
-          // Track error statistics
-          this.eventStats.errors[standardEvent] = (this.eventStats.errors[standardEvent] || 0) + 1;
-          
-          // Provide detailed error information
-          console.error(
-            `[EventBus] Error in subscriber ${index+1}/${subscriberCount} for event "${standardEvent}":`, 
-            error
-          );
-          
-          // Use error handler if available
-          if (this.errorHandler) {
-            this.errorHandler.handleError(error, {
-              context: `EventBus:${standardEvent}`,
-              silent: true, // Don't show UI notifications for event errors
-              source: 'eventBus',
-              data: {
-                event: standardEvent,
-                eventData: data,
-                subscriberIndex: index
-              }
-            });
-          }
-          
-          // For critical workflow events, try to handle the error
-          if (isWorkflowEvent && standardEvent.includes('completed')) {
-            console.warn('[EventBus] Critical workflow event delivery failed - attempting recovery');
-            this.attemptErrorRecovery(standardEvent, data);
-          }
-        }
-      });
-      
-      // Track performance if enabled
-      if (this.trackPerformance && startTime !== null) {
-        const endTime = performance.now();
-        const duration = endTime - startTime;
-        
-        if (!this.performanceStats[standardEvent]) {
-          this.performanceStats[standardEvent] = {
-            count: 0,
-            totalDuration: 0,
-            maxDuration: 0
-          };
-        }
-        
-        const stats = this.performanceStats[standardEvent];
-        stats.count++;
-        stats.totalDuration += duration;
-        stats.maxDuration = Math.max(stats.maxDuration, duration);
-        
-        // Log slow events
-        if (duration > 50) {
-          console.warn(`[EventBus] Slow event "${standardEvent}" took ${duration.toFixed(2)}ms with ${subscriberCount} subscribers`);
-        }
-      }
-      
-      // Return delivery success rate
-      return successCount > 0;
-    }
-    
-    /**
-     * Attempt to recover from errors in critical events
-     * 
-     * @param {string} event - The event that failed
-     * @param {any} data - The event data
-     * @private
-     */
-    attemptErrorRecovery(event, data) {
-      // For workflow completion events, attempt to reset execution state
-      if (event === 'workflow:completed') {
-        try {
-          if (window.workflowManager) {
-            window.workflowManager.executionState.isExecuting = false;
-            console.log('[EventBus] Successfully reset workflow execution state');
-            
-            // Publish recovery event
-            this.publish('error:recovered', {
-              event,
-              message: 'Successfully reset workflow execution state'
-            });
-          }
-        } catch (e) {
-          console.error('[EventBus] Recovery attempt failed:', e);
-        }
-      }
     }
     
     /**

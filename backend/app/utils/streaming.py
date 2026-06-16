@@ -45,9 +45,11 @@ def stream_ollama_response(response, conversation_id=None):
                         if json_obj.get('message', {}).get('content'):
                             content_chunk = json_obj['message']['content']
                             full_content += content_chunk
-                            
-                            # Yield the chunk to the client
-                            yield f"data: {content_chunk}\n\n"
+
+                            # Yield the chunk as a JSON envelope so multi-line
+                            # content survives transport and is distinguishable
+                            # from error events on the client.
+                            yield f"data: {json.dumps({'content': content_chunk})}\n\n"
                         
                         # If this is the final message, store it in the database
                         if json_obj.get('done', False) and conversation_id:
@@ -64,6 +66,9 @@ def stream_ollama_response(response, conversation_id=None):
                     except json.JSONDecodeError as e:
                         current_app.logger.error(f"Error parsing JSON from Ollama stream: {str(e)}")
                         continue
+
+            # Signal normal completion to the client.
+            yield "data: [DONE]\n\n"
         except Exception as e:
             error_msg = f"Error streaming from Ollama: {str(e)}"
             current_app.logger.error(error_msg)

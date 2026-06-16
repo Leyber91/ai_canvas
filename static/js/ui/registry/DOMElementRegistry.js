@@ -51,6 +51,7 @@ export class DOMElementRegistry {
         
         // Modal elements
         'nodeModal': '#node-modal',
+        'modalTitle': '#modal-title',
         'nodeForm': '#node-form',
         'closeModalBtn': '.close',
         'cancelBtn': '#cancel-btn',

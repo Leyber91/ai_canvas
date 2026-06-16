@@ -109,13 +109,16 @@ export class EventListenerSetup {
    * Set up event bus subscriptions
    */
   setupEventBusSubscriptions() {
-    // Subscribe to node events
+    // Subscribe to node selection events
     this.eventBus.subscribe('node:selected', this.themeManager.handleNodeSelected.bind(this.themeManager));
     this.eventBus.subscribe('node:deselected', this.themeManager.handleNodeDeselected.bind(this.themeManager));
-    this.eventBus.subscribe('node:executing', this.themeManager.handleNodeExecuting.bind(this.themeManager));
-    this.eventBus.subscribe('node:completed', this.themeManager.handleNodeCompleted.bind(this.themeManager));
-    this.eventBus.subscribe('node:error', this.themeManager.handleNodeError.bind(this.themeManager));
-    
+    // NOTE: node execution animations are routed by UIManager, which subscribes
+    // to the engine's actual events (workflow:node-executing/-completed/-error)
+    // and forwards them to themeManager.handleNode*. The previous
+    // node:executing/completed/error subscriptions here never fired (wrong
+    // names); re-pointing them to the workflow: names would double-fire the
+    // animation, so they are intentionally omitted.
+
     // Subscribe to workflow events
     this.eventBus.subscribe('workflow:executing', this.themeManager.handleWorkflowExecuting.bind(this.themeManager));
     this.eventBus.subscribe('workflow:completed', this.themeManager.handleWorkflowCompleted.bind(this.themeManager));

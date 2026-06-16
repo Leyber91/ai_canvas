@@ -702,7 +702,7 @@ visualizeWorkflowExecution(executionOrder, results = {}) {
   highlightCycles(cycles = null) {
     // If cycles not provided, get them from the workflow manager
     if (!cycles && this.workflowManager) {
-      const cycleInfo = this.workflowManager.detectCycles();
+      const cycleInfo = this.workflowManager.getCycleInfo();
       cycles = cycleInfo.cycles;
     }
     

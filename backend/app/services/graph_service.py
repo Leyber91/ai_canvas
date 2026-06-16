@@ -7,7 +7,7 @@ from flask import current_app
 from sqlalchemy.exc import SQLAlchemyError
 
 from ..models import db, Graph, Node, Edge, Conversation, Message
-from . import ollama_service, groq_service
+from . import ollama_service, groq_service, nvidia_service
 
 def create_graph(name, description=None, layout_data=None):
     """Create a new graph."""
@@ -337,6 +337,8 @@ def execute_workflow(graph_id):
                 results[node_id] = ollama_service.process_node(node, parent_contexts, conversation_history, conversation)
             elif node.backend == "groq":
                 results[node_id] = groq_service.process_node(node, parent_contexts, conversation_history, conversation)
+            elif node.backend == "nvidia":
+                results[node_id] = nvidia_service.process_node(node, parent_contexts, conversation_history, conversation)
             else:
                 results[node_id] = f"Error: Unsupported backend: {node.backend}"
         

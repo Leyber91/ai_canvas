@@ -6,7 +6,7 @@
  * and authentication.
  */
 export class APIClient {
-  constructor(baseUrl, eventBus, errorHandler) {
+  constructor(baseUrl, eventBus, errorHandler, apiTimeout = 30000) {
     // Validate and normalize the base URL
     if (!baseUrl) {
       console.error('No base URL provided to APIClient');
@@ -32,6 +32,7 @@ export class APIClient {
     this.errorHandler = errorHandler;
     this.requestsInProgress = 0;
     this.apiPrefix = 'api'; // Without leading slash for better URL joining
+    this.apiTimeout = apiTimeout; // ms; non-streaming requests abort after this
     
     // Log configuration for debugging
     console.log('APIClient initialized with:', {
@@ -255,12 +256,18 @@ export class APIClient {
     this.eventBus?.publish('api:request:start', { url, method });
     
     console.log(`Starting ${method} request to: ${url}`);
-    
+
+    // Abort the request if it exceeds the configured timeout, so a hung backend
+    // cannot permanently hold one of the limited concurrency slots.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.apiTimeout);
+
     try {
       this.requestsInProgress++;
-      
+
       const response = await fetch(url, {
         ...options,
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           ...options.headers
@@ -325,9 +332,15 @@ export class APIClient {
       
       return data;
     } catch (error) {
+      // A timeout surfaces as an AbortError; convert it to a clear timeout error.
+      if (error.name === 'AbortError') {
+        error = new Error(`Request timed out after ${this.apiTimeout}ms`);
+        error.status = 'timeout';
+      }
+
       // For network-level errors or non-JSON responses
       console.error(`${method} ${url} failed:`, error);
-      
+
       // Enrich error with request details if not already present
       if (!error.url) {
         error.url = url;
@@ -344,8 +357,9 @@ export class APIClient {
       
       throw error;
     } finally {
+      clearTimeout(timeoutId);
       this.requestsInProgress--;
-      
+
       // Publish end event in all cases
       this.eventBus?.publish('api:request:end', { url, method });
       
@@ -473,46 +487,76 @@ export class APIClient {
       
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      
-      let done = false;
+
+      let buffer = '';
       let fullContent = '';
-      
+      let streamDone = false;
+      let errored = false;
+
       console.log('Starting to read stream...');
-      
-      while (!done) {
+
+      while (!streamDone) {
         const { value, done: readerDone } = await reader.read();
-        done = readerDone;
-        
-        if (done) {
+        if (readerDone) {
           console.log('Stream reading completed');
           break;
         }
-        
-        // Decode and process the chunk
-        const chunk = decoder.decode(value, { stream: true });
-        fullContent += chunk;
-        
-        // Process the chunk (it may contain multiple SSE events)
-        const lines = chunk.split('\n');
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.substring(6);
+
+        // Accumulate bytes; a single SSE event can be split across reads, and a
+        // read can contain several events. Buffer, then process whole lines only.
+        buffer += decoder.decode(value, { stream: true });
+
+        let newlineIndex;
+        while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
+          const rawLine = buffer.slice(0, newlineIndex).trim();
+          buffer = buffer.slice(newlineIndex + 1);
+
+          if (!rawLine.startsWith('data:')) continue;
+          const payload = rawLine.slice(5).trim();
+          if (!payload) continue;
+
+          // Terminal sentinel.
+          if (payload === '[DONE]') { streamDone = true; break; }
+
+          // Each event is a JSON envelope ({content} or {error}); fall back to
+          // treating the payload as raw text for backward compatibility.
+          let parsed = null;
+          try { parsed = JSON.parse(payload); } catch (e) { /* legacy raw chunk */ }
+
+          if (parsed && parsed.error) {
+            errored = true;
+            streamDone = true;
+            const streamError = new Error(parsed.error);
+            streamError.url = url;
+            this.eventBus?.publish('api:stream:error', { url, error: streamError });
+            if (onError) onError(streamError);
+            break;
+          }
+
+          const content = parsed && parsed.content !== undefined
+            ? parsed.content
+            : (parsed === null ? payload : '');
+
+          if (content) {
+            fullContent += content;
             try {
-              onChunk(data);
+              onChunk(content);
             } catch (error) {
               console.error('Error in stream chunk handler:', error);
             }
-          } else if (line.trim()) {
-            console.log('Non-data line in stream:', line);
           }
         }
       }
-      
+
+      // An error event already routed to onError; do not also fire onComplete.
+      if (errored) {
+        return;
+      }
+
       // Stream completed successfully
       console.log('Stream completed successfully');
       this.eventBus?.publish('api:stream:complete', { url });
-      
+
       if (onComplete) {
         onComplete(fullContent);
       }

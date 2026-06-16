@@ -264,18 +264,21 @@ export class ConversationManager {
               console.error('Unexpected Ollama response format:', response);
               throw new Error('No response or unexpected format from Ollama');
             }
-          } else if (nodeData.backend === 'groq') {
+          } else if (nodeData.backend === 'groq' || nodeData.backend === 'nvidia') {
+            // Both Groq and NVIDIA NIM return the OpenAI-compatible shape. The
+            // backend folds any reasoning trace into content as <think>...</think>.
+            const providerLabel = nodeData.backend === 'nvidia' ? 'NVIDIA NIM' : 'Groq';
             if (response.choices && response.choices.length > 0 && response.choices[0].message && response.choices[0].message.content) {
               responseContent = response.choices[0].message.content;
             } else if (response.error) {
               // Handle error object which could be a string or an object with a message property
-              const errorMessage = typeof response.error === 'string' 
-                ? response.error 
+              const errorMessage = typeof response.error === 'string'
+                ? response.error
                 : (response.error.message || JSON.stringify(response.error));
               throw new Error(errorMessage);
             } else {
-              console.error('Unexpected Groq response format:', response);
-              throw new Error('No response or unexpected format from Groq');
+              console.error(`Unexpected ${providerLabel} response format:`, response);
+              throw new Error(`No response or unexpected format from ${providerLabel}`);
             }
           } else {
             responseContent = 'Unsupported backend';

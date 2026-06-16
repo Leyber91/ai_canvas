@@ -131,6 +131,7 @@ export class UIManager extends BaseManager {
       'loadGraphBtn',
       'executeWorkflowBtn',
       'nodeModal',
+      'modalTitle',
       'nodeForm',
       'closeModalBtn',
       'cancelBtn',
@@ -380,6 +381,13 @@ export class UIManager extends BaseManager {
       // Let theme manager know about edge selection
       if (this.themeManager && typeof this.themeManager.handleEdgeSelected === 'function') {
         this.themeManager.handleEdgeSelected(edgeData);
+      }
+
+      // Offer a floating "Remove Connection" button near the tapped edge. The
+      // edge:selected payload carries id + rendered position (CytoscapeManager).
+      if (edgeData && edgeData.position && this.nodeOperationsManager &&
+          typeof this.nodeOperationsManager.showEdgeRemoveButton === 'function') {
+        this.nodeOperationsManager.showEdgeRemoveButton(edgeData);
       }
     } catch (error) {
       this.handleError(error, 'handleEdgeSelected');

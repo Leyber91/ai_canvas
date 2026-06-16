@@ -9,6 +9,7 @@ import { BasePanelManager } from './panel/BasePanelManager.js';
 import { FormatHelpers } from './helpers/formatHelpers.js';
 import { CONVERSATION_EVENTS } from '../core/constants/EventTypes.js';
 import { EventBusService } from '../core/services/EventBusService.js';
+import { renderAssistantContent } from './reasoning.js';
 
 export class ConversationPanelManager extends BasePanelManager {
   /**
@@ -293,16 +294,16 @@ export class ConversationPanelManager extends BasePanelManager {
       
       // Send the message
       conversationManager.sendMessage(messageText, (response) => {
-        // The response will be handled by the message:received event handler
-        // But we need to handle failure cases here
-        if (!response) {
-          // Remove typing indicator if there was no response
+        // Assistant replies render via the message:received handler. Here we only
+        // surface failures: no response at all, or an error/system message
+        // (e.g. a stream error routed through onError).
+        if (!response || response.role === 'system') {
+          // Remove the typing indicator
           if (typingIndicator && typingIndicator.parentNode) {
             typingIndicator.parentNode.removeChild(typingIndicator);
           }
-          
-          // Add error message
-          this.addMessageToUI('system', 'Error: No response received.');
+
+          this.addMessageToUI('system', response ? response.content : 'Error: No response received.');
         }
       });
     } catch (error) {
@@ -350,11 +351,16 @@ export class ConversationPanelManager extends BasePanelManager {
       const messageDiv = this.createElement('div', {
         className: `message ${role === 'user' ? 'user-message' : (role === 'system' ? 'system-message' : 'assistant-message')}`
       });
-      
-      // Format message content
-      const formattedContent = this.formatMessage(content);
-      messageDiv.innerHTML = formattedContent;
-      
+
+      // Assistant messages may carry a reasoning trace (<think>...</think>) from
+      // any provider; render it as a collapsible block above the answer. User and
+      // system messages keep the plain formatter.
+      if (role === 'assistant') {
+        messageDiv.innerHTML = renderAssistantContent(content, (answer) => this.formatMessage(answer));
+      } else {
+        messageDiv.innerHTML = this.formatMessage(content);
+      }
+
       chatMessages.appendChild(messageDiv);
       this.scrollToBottom();
     } catch (error) {

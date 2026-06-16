@@ -1,0 +1,171 @@
+/*
+ * _reasoning.css
+ *
+ * Reasoning-trace UI + chat/message refresh.
+ *
+ * Renders the collapsible "Reasoning" block emitted by ui/reasoning.js for any
+ * reasoning model (NVIDIA Nemotron, DeepSeek-R1, QwQ, gpt-oss, ...). Theme-var
+ * driven with literal fallbacks so it degrades gracefully in every theme.
+ */
+
+/* ---- Assistant message refresh -------------------------------------------- */
+
+.message {
+  position: relative;
+  line-height: 1.55;
+  box-shadow: var(--shadow-sm, 0 2px 8px rgba(0, 0, 0, 0.2));
+  animation: msg-rise 0.28s ease both;
+}
+
+@keyframes msg-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.assistant-message {
+  border-left: 3px solid var(--neon-teal, #00ffd8);
+}
+
+.answer-body { display: block; }
+
+.answer-body code,
+.message code {
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  background: rgba(0, 0, 0, 0.28);
+  padding: 0.08em 0.4em;
+  border-radius: 4px;
+  font-size: 0.92em;
+}
+
+/* ---- Reasoning trace block ------------------------------------------------ */
+
+.reasoning-block {
+  margin: 0 0 0.6rem;
+  border: 1px solid var(--glass-border, rgba(80, 120, 240, 0.25));
+  border-left: 3px solid var(--neon-teal, #00ffd8);
+  border-radius: var(--border-radius-sm, 6px);
+  background: linear-gradient(
+    180deg,
+    rgba(0, 255, 216, 0.06),
+    rgba(0, 0, 0, 0.12)
+  );
+  overflow: hidden;
+}
+
+.reasoning-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-tertiary, rgba(170, 200, 255, 0.7));
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.reasoning-summary::-webkit-details-marker { display: none; }
+
+.reasoning-summary:hover {
+  background: rgba(0, 255, 216, 0.08);
+  color: var(--neon-teal, #00ffd8);
+}
+
+.reasoning-spark {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--neon-teal, #00ffd8);
+  box-shadow: 0 0 8px var(--neon-teal, #00ffd8);
+  animation: spark-pulse 2s ease-in-out infinite;
+}
+
+@keyframes spark-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.1); }
+}
+
+.reasoning-label { font-weight: 600; }
+
+.reasoning-meta {
+  margin-left: auto;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--text-muted, rgba(130, 160, 210, 0.6));
+}
+
+/* Rotating caret cue */
+.reasoning-summary::after {
+  content: '';
+  margin-left: 0.4rem;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid currentColor;
+  transition: transform 0.2s ease;
+}
+.reasoning-block[open] .reasoning-summary::after { transform: rotate(180deg); }
+
+.reasoning-body {
+  padding: 0.6rem 0.75rem;
+  border-top: 1px solid var(--glass-border, rgba(80, 120, 240, 0.25));
+  font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-secondary, rgba(221, 235, 255, 0.85));
+  max-height: 320px;
+  overflow-y: auto;
+  opacity: 0.92;
+}
+
+/* ---- Provider chip (node info / model badges) ----------------------------- */
+
+.provider-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border: 1px solid currentColor;
+  background: rgba(0, 0, 0, 0.18);
+}
+.provider-chip::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.provider-chip[data-provider="ollama"] { color: #3498db; }
+.provider-chip[data-provider="groq"]   { color: #b07cff; }
+.provider-chip[data-provider="nvidia"] { color: #76b900; }
+
+.reasoning-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--neon-teal, #00ffd8);
+  border: 1px solid rgba(0, 255, 216, 0.4);
+  background: rgba(0, 255, 216, 0.08);
+}
+
+/* Respect reduced-motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .message { animation: none; }
+  .reasoning-spark { animation: none; }
+}

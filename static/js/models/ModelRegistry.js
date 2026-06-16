@@ -11,20 +11,30 @@ export class ModelRegistry {
       
       this.availableModels = {
         ollama: [],
-        groq: []
+        groq: [],
+        nvidia: []
       };
-      
+
       this.modelLimits = {};
-      
+      // Capability metadata keyed by model id, e.g. { 'nvidia/...': { reasoning: true } }
+      this.modelMetadata = {};
+
       // Default values for when API is unavailable
       this.fallbackModels = {
         ollama: ['llama3', 'llama2', 'mistral'],
         groq: [
+          'llama-3.3-70b-versatile',
           'deepseek-r1-distill-llama-70b',
-          'deepseek-r1-distill-llama-32b',
-          'mixtral-8x7b-32768',
+          'deepseek-r1-distill-qwen-32b',
           'qwen-2.5-32b',
           'qwen-2.5-coder-32b'
+        ],
+        nvidia: [
+          'nvidia/nemotron-3-ultra-550b-a55b',
+          'nvidia/llama-3.3-nemotron-super-49b-v1',
+          'deepseek-ai/deepseek-r1',
+          'qwen/qwq-32b',
+          'meta/llama-3.3-70b-instruct'
         ]
       };
     }
@@ -78,16 +88,25 @@ export class ModelRegistry {
           // Initialize with empty array rather than undefined
           response.groq = [];
         }
-        
+
+        if (!Array.isArray(response.nvidia)) {
+          console.warn('API response is missing nvidia array:', response);
+          response.nvidia = [];
+        }
+
         // Update available models - ensure we always have arrays
-        this.availableModels.ollama = response.ollama.length > 0 ? 
-          response.ollama : 
+        this.availableModels.ollama = response.ollama.length > 0 ?
+          response.ollama :
           this.fallbackModels.ollama;
-          
-        this.availableModels.groq = response.groq.length > 0 ? 
-          response.groq : 
+
+        this.availableModels.groq = response.groq.length > 0 ?
+          response.groq :
           this.fallbackModels.groq;
-        
+
+        this.availableModels.nvidia = response.nvidia.length > 0 ?
+          response.nvidia :
+          this.fallbackModels.nvidia;
+
         console.log('Available models loaded:', this.availableModels);
         
         // Important: publish event after updating models
@@ -113,6 +132,35 @@ export class ModelRegistry {
       } catch (error) {
         console.error('Error fetching Groq model limits:', error);
       }
+
+      // NVIDIA capability metadata (reasoning flags). Non-fatal if unavailable.
+      try {
+        const metadata = await this.apiClient.get('/nvidia/model-metadata');
+        if (metadata && typeof metadata === 'object') {
+          this.modelMetadata = { ...this.modelMetadata, ...metadata };
+          console.log('NVIDIA model metadata:', metadata);
+        }
+      } catch (error) {
+        console.warn('Error fetching NVIDIA model metadata:', error);
+      }
+    }
+
+    /**
+     * Whether a model is a reasoning model (emits a chain-of-thought trace).
+     * Uses backend metadata when available, falls back to an id heuristic that
+     * also covers DeepSeek-R1 on Groq/Ollama.
+     *
+     * @param {string} model - Model id
+     * @returns {boolean}
+     */
+    isReasoningModel(model) {
+      if (!model) return false;
+      if (this.modelMetadata[model] && this.modelMetadata[model].reasoning) {
+        return true;
+      }
+      const low = model.toLowerCase();
+      return ['nemotron', 'deepseek-r1', 'qwq', 'gpt-oss', '-r1', 'reason']
+        .some(fragment => low.includes(fragment));
     }
     
     /**
@@ -190,7 +238,7 @@ export class ModelRegistry {
         default:
           return {
             ollama: this.availableModels.ollama.filter(m => m.includes('llama3')),
-            groq: ['mixtral-8x7b-32768']
+            groq: ['llama-3.3-70b-versatile']
           };
       }
     }
@@ -234,7 +282,21 @@ export class ModelRegistry {
           };
         }
       }
-      
+
+      if (backend === 'nvidia') {
+        // Reasoning models want headroom for the trace and lower temperature.
+        if (this.isReasoningModel(model)) {
+          return {
+            temperature: 0.6,
+            maxTokens: 4096
+          };
+        }
+        return {
+          temperature: 0.7,
+          maxTokens: 2048
+        };
+      }
+
       return defaultSettings;
     }
     
